@@ -29,8 +29,9 @@
   }
   function makeLayer(name, id = `layer-${uuid()}`) {
     return {
-      id, name, visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over',
-      type: 'pixel', onionSkin: true, lockTransparency: false, fillReference: false, maskEnabled: false,
+      id, name, parentId: null, hierarchyEnabled: false, visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over',
+      type: 'pixel', transformLayer: false, pivotX: frameWidth / 2, pivotY: frameHeight / 2,
+      onionSkin: true, lockTransparency: false, fillReference: false, maskEnabled: false,
       ownFps: false, fps: Number(doc.querySelector('#animation-fps').value),
       loopMode: 'normal', frames: Array(frameCount).fill(null), keyframes: Array(frameCount).fill(false),
       motion: Array.from({ length: frameCount }, identityPose)
@@ -38,7 +39,7 @@
   }
   function cloneLayer(source, name = `${source.name} copy`) {
     return {
-      ...source, id: `layer-${uuid()}`, name,
+      ...source, id: `layer-${uuid()}`, name, parentId: null, hierarchyEnabled: false,
       frames: source.frames.map(frame => frame ? cloneImageData(frame) : null),
       maskFrames: source.maskFrames?.map(frame => frame ? cloneImageData(frame) : null) || null,
       keyframes: source.keyframes.slice(),
@@ -281,13 +282,21 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           <div class="desk-canvas-area"><div class="canvas-matte"><canvas id="drawing-canvas" width="640" height="400" aria-label="Zone de dessin de l’image courante" role="img"></canvas></div></div>
           <div class="desk-stage-bar"><div class="stage-left-controls"><button id="previous-frame" type="button" title="Image précédente" aria-label="Image précédente">|◀</button><button id="next-frame" type="button" title="Image suivante" aria-label="Image suivante">▶|</button><button id="stage-onion" type="button" aria-pressed="true" title="Pelure d’oignon" aria-label="Pelure d’oignon">◐</button><button id="loop-playback" type="button" aria-pressed="true" title="Lecture en boucle" aria-label="Lecture en boucle">⟳</button></div><div class="stage-transport"><button id="stage-to-first" type="button" title="Revenir à la première image" aria-label="Revenir à la première image">≪</button><button id="stage-play" type="button" title="Lire l’animation" aria-label="Lire l’animation">▶</button><button id="stage-to-last" type="button" title="Aller à la dernière image" aria-label="Aller à la dernière image">≫</button></div><span class="stage-scene">Scene 1</span><label class="stage-fps">24 fps <select id="animation-fps" aria-label="Images par seconde"><option>4</option><option>8</option><option>12</option><option>16</option><option selected>24</option></select></label><span id="animation-status" role="status" aria-live="polite">Prêt</span><button id="toggle-timeline-stage" type="button" aria-label="Replier la timeline" title="Replier la timeline">▾</button></div>
         </div>
-        <aside class="desk-inspector" aria-label="Réglages"><button type="button" id="color-swatch" title="Choisir une couleur" aria-label="Choisir une couleur"><input id="brush-color" type="color" value="#111111" aria-label="Couleur du pinceau"></button><button type="button" id="toggle-brush-library" aria-label="Choisir un pinceau" aria-expanded="false" title="Choisir un pinceau">≋</button><button type="button" id="toggle-layers" aria-label="Afficher les calques" title="Calques">◆</button><button type="button" id="toggle-settings" aria-label="Réglages du pinceau" title="Réglages">☷</button><div class="brush-library" id="brush-library" hidden aria-label="Bibliothèque de pinceaux"><strong>Pinceaux</strong><div class="brush-presets"><button type="button" data-brush="round" aria-pressed="true"><span class="brush-sample sample-round"></span><span>Rond</span></button><button type="button" data-brush="pencil" aria-pressed="false"><span class="brush-sample sample-pencil"></span><span>Crayon</span></button><button type="button" data-brush="marker" aria-pressed="false"><span class="brush-sample sample-marker"></span><span>Marqueur</span></button><button type="button" data-brush="airbrush" aria-pressed="false"><span class="brush-sample sample-airbrush"></span><span>Aérographe</span></button></div></div><div class="brush-settings" id="brush-settings" hidden><label>Taille <output id="brush-size-side">5 px</output><input id="brush-size-side-control" type="range" min="1" max="28" value="5"></label><label>Opacité <output id="brush-opacity-value">100 %</output><input id="brush-opacity" type="range" min="10" max="100" value="100"></label><label class="brush-check"><input id="brush-pressure" type="checkbox"> Pression du stylet</label><label class="onion-setting"><input id="onion-skin" type="checkbox" checked> Pelure d’oignon</label><label>Nombre de boucles<select id="loop-count"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option></select></label><label>Nom du fichier<input id="animation-name" type="text" value="mon-animation" maxlength="40"></label></div><label class="visually-hidden">Épaisseur <output id="brush-size-value-accessible">5 px</output></label></aside>
+        <aside class="desk-inspector" aria-label="Réglages"><button type="button" id="color-swatch" title="Choisir une couleur" aria-label="Choisir une couleur"><input id="brush-color" type="color" value="#111111" aria-label="Couleur du pinceau"></button><button type="button" id="toggle-brush-library" aria-label="Choisir un pinceau" aria-expanded="false" title="Choisir un pinceau">≋</button><button type="button" id="toggle-shape-library" aria-label="Choisir une forme" aria-expanded="false" title="Choisir une forme">◇</button><button type="button" id="toggle-layers" aria-label="Afficher les calques" title="Calques">◆</button><button type="button" id="toggle-settings" aria-label="Réglages du pinceau" title="Réglages">☷</button><div class="brush-library" id="brush-library" hidden aria-label="Bibliothèque de pinceaux"><strong>Pinceaux</strong><div class="brush-presets"><button type="button" data-brush="round" aria-pressed="true"><span class="brush-sample sample-round"></span><span>Rond</span></button><button type="button" data-brush="pencil" aria-pressed="false"><span class="brush-sample sample-pencil"></span><span>Crayon</span></button><button type="button" data-brush="marker" aria-pressed="false"><span class="brush-sample sample-marker"></span><span>Marqueur</span></button><button type="button" data-brush="airbrush" aria-pressed="false"><span class="brush-sample sample-airbrush"></span><span>Aérographe</span></button></div></div><div class="shape-library" id="shape-library" hidden aria-label="Bibliothèque de formes"><div class="shape-library-header"><span>Formes</span><button type="button" class="shape-library-close" aria-label="Fermer la bibliothèque de formes">×</button></div><div class="shape-grid"><button type="button" class="shape-card" data-shape="circle" aria-label="Forme cercle"><span class="shape-swatch round"></span><span>Cercle</span></button><button type="button" class="shape-card" data-shape="square" aria-label="Forme carré"><span class="shape-swatch square"></span><span>Carré</span></button><button type="button" class="shape-card" data-shape="triangle" aria-label="Forme triangle"><span class="shape-swatch triangle"></span><span>Triangle</span></button><button type="button" class="shape-card" data-shape="diamond" aria-label="Forme losange"><span class="shape-swatch diamond"></span><span>Losange</span></button><button type="button" class="shape-card" data-shape="star" aria-label="Forme étoile"><span class="shape-swatch star"></span><span>Étoile</span></button><button type="button" class="shape-card" data-shape="heart" aria-label="Forme cœur"><span class="shape-swatch heart"></span><span>Cœur</span></button></div></div><div class="brush-settings" id="brush-settings" hidden><label>Taille <output id="brush-size-side">5 px</output><input id="brush-size-side-control" type="range" min="1" max="28" value="5"></label><label>Opacité <output id="brush-opacity-value">100 %</output><input id="brush-opacity" type="range" min="10" max="100" value="100"></label><label class="brush-check"><input id="brush-pressure" type="checkbox"> Pression du stylet</label><label class="onion-setting"><input id="onion-skin" type="checkbox" checked> Pelure d’oignon</label><label>Nombre de boucles<select id="loop-count"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option></select></label><label>Nom du fichier<input id="animation-name" type="text" value="mon-animation" maxlength="40"></label></div><label class="visually-hidden">Épaisseur <output id="brush-size-value-accessible">5 px</output></label></aside>
+        <section class="transform-hierarchy-panel" id="transform-hierarchy-panel" aria-label="Transform Hierarchy" hidden>
+          <header class="transform-hierarchy-title"><strong>Transform Hierarchy</strong><button type="button" id="close-transform-hierarchy" aria-label="Fermer le panneau">×</button></header>
+          <div class="transform-hierarchy-columns">
+            <section class="transform-hierarchy-source"><h2>All layers</h2><div id="transform-layer-source"></div></section>
+            <section class="transform-hierarchy-target"><h2>Hierarchy</h2><div id="transform-hierarchy-tree" aria-label="Hiérarchie de transformations"></div><p id="transform-hierarchy-empty">Drop layers here to create a transform hierarchy</p></section>
+          </div>
+          <div class="transform-pivot-controls"><strong>Layer pivot</strong><label>X <input id="transform-pivot-x" type="number" min="0" max="640" step="1"></label><label>Y <input id="transform-pivot-y" type="number" min="0" max="400" step="1"></label></div>
+        </section>
       </div>
       <section class="desk-timeline" id="desk-timeline" aria-label="Timeline de l’animation">
         <header class="timeline-topbar"><div class="timeline-top-left"><button type="button" id="toggle-timeline" aria-label="Réduire la timeline" title="Réduire la timeline">⌄</button><strong>Timeline</strong><span id="frame-count">20 images</span></div><div class="timeline-mini-controls"><button type="button" id="timeline-prev" aria-label="Reculer d’une image">◀</button><button type="button" id="timeline-play" aria-label="Lire l’animation">▶</button><button type="button" id="timeline-next" aria-label="Avancer d’une image">▶|</button><button type="button" id="open-markers" title="Rechercher et gérer les marqueurs">Marqueurs</button><select id="motion-easing" aria-label="Courbe d’accélération"><option value="linear">Linéaire</option><option value="hold">Maintien</option><option value="easeIn">Ease In</option><option value="easeOut">Ease Out</option><option value="easeInOut">Ease In Out</option><option value="sine">Sine</option><option value="circular">Circular</option><option value="back">Back</option><option value="elastic">Elastic</option><option value="bounce">Bounce</option><option value="exponential">Exponential</option><option value="cubic">Cubic</option><option value="quartic">Quartic</option><option value="quintic">Quintic</option></select><label title="Zoom de la timeline"><input type="range" min="42" max="100" value="52" id="timeline-scale"></label></div><span class="scene-info">Scene 1 <span>24 fps</span></span></header>
         <div class="timeline-body"><div class="layer-column"><div class="layer-column-heading">Calques <button type="button" id="add-layer" title="Ajouter un calque" aria-label="Ajouter un calque">+</button></div><div id="layer-list"></div></div><div class="track-viewport"><div id="frame-ruler"></div><div id="layer-tracks"></div><div class="frame-commands"><button type="button" id="add-keyframe" title="Créer une image clé sur le calque actif">◆ Image clé</button><label class="motion-tween-control" title="Interpoler position, taille et rotation entre les images clés"><input id="motion-tween" type="checkbox" checked> Déplacement auto</label><button type="button" id="add-frame">＋ Add Drawing</button><button type="button" id="duplicate-frame">⧉ Duplicate</button><button type="button" id="extend-frame">↔ Extend</button><button type="button" id="delete-frame" aria-label="Supprimer l’image sélectionnée">⌫</button></div></div></div>
       </section>
-      <div class="desk-action-menu" id="desk-action-menu" hidden><button type="button" id="menu-cut-drawing">Couper</button><button type="button" id="menu-copy-drawing">Copier</button><button type="button" id="menu-paste-drawing">Coller</button><button type="button" id="menu-duplicate-drawing">Dupliquer le dessin</button><button type="button" id="menu-delete-selection">Supprimer</button><hr><button type="button" id="menu-select-all-layers">Sélectionner tous les calques</button><button type="button" id="menu-rename-layer">✎ Renommer</button><button type="button" id="menu-lock-layer">♙ Verrouiller</button><button type="button" id="menu-toggle-layer-onion">◐ Désactiver la pelure d’oignon</button><button type="button" id="menu-copy-layer">▢ Copier</button><button type="button" id="menu-duplicate-layer">▢ Dupliquer</button><button type="button" id="menu-focus-layer">◎ Focus</button><button type="button" id="menu-lock-transparency">▦ Verrouiller la transparence</button><button type="button" id="menu-fill-reference">◈ Définir comme référence de remplissage</button><button type="button" id="menu-layer-mask">▧ Ajouter un masque</button><button type="button" id="menu-layer-properties">Propriétés du calque</button><button type="button" id="menu-paste-layer">Coller le calque</button><button type="button" id="menu-rasterize-layer">▦ Rasteriser</button><button type="button" id="menu-merge-down">⇩ Fusionner vers le bas</button><button type="button" id="menu-create-symbol">◇ Créer un symbole</button><button type="button" id="menu-open-symbols">Symboles</button><button type="button" id="menu-delete-layer">▤ Supprimer le calque</button><button type="button" id="menu-add-drawing">Ajouter un dessin</button><button type="button" id="menu-split-drawing">Séparer le dessin</button><button type="button" id="menu-add-marker">Ajouter un marqueur</button><hr><button type="button" id="menu-export-video">Exporter la vidéo…</button><button type="button" id="export-frame">Exporter l’image PNG</button><button type="button" id="menu-clear-frame">Effacer l’image courante</button></div>
+      <div class="desk-action-menu" id="desk-action-menu" hidden><button type="button" id="menu-cut-drawing">Couper</button><button type="button" id="menu-copy-drawing">Copier</button><button type="button" id="menu-paste-drawing">Coller</button><button type="button" id="menu-duplicate-drawing">Dupliquer le dessin</button><button type="button" id="menu-delete-selection">Supprimer</button><hr><button type="button" id="menu-select-all-layers">Sélectionner tous les calques</button><button type="button" id="menu-add-transform-layer">◇ Transform Layer</button><button type="button" id="menu-rename-layer">✎ Renommer</button><button type="button" id="menu-lock-layer">♙ Verrouiller</button><button type="button" id="menu-toggle-layer-onion">◐ Désactiver la pelure d’oignon</button><button type="button" id="menu-copy-layer">▢ Copier</button><button type="button" id="menu-duplicate-layer">▢ Dupliquer</button><button type="button" id="menu-focus-layer">◎ Focus</button><button type="button" id="menu-lock-transparency">▦ Verrouiller la transparence</button><button type="button" id="menu-fill-reference">◈ Définir comme référence de remplissage</button><button type="button" id="menu-layer-mask">▧ Ajouter un masque</button><button type="button" id="menu-layer-properties">Propriétés du calque</button><button type="button" id="menu-paste-layer">Coller le calque</button><button type="button" id="menu-rasterize-layer">▦ Rasteriser</button><button type="button" id="menu-merge-down">⇩ Fusionner vers le bas</button><button type="button" id="menu-create-symbol">◇ Créer un symbole</button><button type="button" id="menu-open-symbols">Symboles</button><button type="button" id="menu-delete-layer">▤ Supprimer le calque</button><button type="button" id="menu-add-drawing">Ajouter un dessin</button><button type="button" id="menu-split-drawing">Séparer le dessin</button><button type="button" id="menu-add-marker">Ajouter un marqueur</button><hr><button type="button" id="menu-export-video">Exporter la vidéo…</button><button type="button" id="export-frame">Exporter l’image PNG</button><button type="button" id="menu-clear-frame">Effacer l’image courante</button></div>
       <dialog class="desk-properties-dialog" id="desk-properties-dialog" aria-labelledby="desk-properties-title"><form method="dialog"><header><h2 id="desk-properties-title">Propriétés du calque</h2><button value="cancel" aria-label="Fermer">×</button></header><label>Type<select id="layer-type"><option value="pixel">Calque pixel</option><option value="animation">Calque d’animation</option><option value="symbol">Calque symbole</option></select></label><label>Opacité <output id="layer-opacity-value">100 %</output><input id="layer-opacity" type="range" min="0" max="100" value="100"></label><label>Mode de fusion<select id="layer-blend"><option value="source-over">Normal</option><option value="multiply">Multiplier</option><option value="screen">Écran</option><option value="overlay">Superposition</option><option value="darken">Obscurcir</option><option value="lighten">Éclaircir</option><option value="lighter">Ajouter</option></select></label><label class="property-check"><input id="layer-muted" type="checkbox"> Muet</label><label class="property-check"><input id="layer-locked" type="checkbox"> Verrouillé</label><label class="property-check"><input id="onion-skin-layer" type="checkbox" checked> Pelure d’oignon</label><label class="property-check"><input id="symbol-own-fps" type="checkbox"> Cadence propre au symbole</label><label>Cadence du symbole<input id="symbol-fps" type="number" min="1" max="60" value="24"></label><label>Boucle du symbole<select id="symbol-loop"><option value="normal">Normale</option><option value="once">Une fois</option><option value="pingpong">Ping-pong</option></select></label><button class="desk-property-save" value="default">Terminé</button></form></dialog>
       <dialog class="desk-markers-dialog" id="desk-markers-dialog" aria-labelledby="desk-markers-title"><form method="dialog"><header><h2 id="desk-markers-title">Marqueurs</h2><button value="cancel" aria-label="Fermer">×</button></header><label>Rechercher un marqueur<input id="marker-search" type="search" placeholder="Rechercher"></label><div id="marker-list"></div><div class="marker-dialog-actions"><button type="button" id="marker-add">Ajouter à l’image actuelle</button><button class="desk-property-save" value="default">Fermer</button></div></form></dialog>
       <dialog class="desk-symbols-dialog" id="desk-symbols-dialog" aria-labelledby="desk-symbols-title"><form method="dialog"><header><h2 id="desk-symbols-title">Symboles</h2><button value="cancel" aria-label="Fermer">×</button></header><div id="symbol-list"></div><div class="marker-dialog-actions"><button type="button" id="symbol-create">Créer depuis le calque actif</button><button class="desk-property-save" value="default">Fermer</button></div></form></dialog>
@@ -488,6 +497,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           media.append(video);
         }
       }
+      if (activeTool === 'transform' && !layer?.transformLayer && !hasPixels(draftContext.getImageData(0, 0, frameWidth, frameHeight))) return;
       const details = doc.createElement('span');
       details.className = 'library-entry-details';
       const title = doc.createElement('strong');
@@ -1374,15 +1384,17 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   const layerCell = () => Array(20).fill(null);
   let frameCount = 20;
   let layers = [
-    { id: 'background', name: 'Background', visible: true, locked: true, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) },
-    { id: 'bg', name: 'BG', visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) },
-    { id: 'layer-2', name: 'Layer 2', visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) }
+    { id: 'background', name: 'Background', parentId: null, hierarchyEnabled: false, transformLayer: false, pivotX: frameWidth / 2, pivotY: frameHeight / 2, visible: true, locked: true, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) },
+    { id: 'bg', name: 'BG', parentId: null, hierarchyEnabled: false, transformLayer: false, pivotX: frameWidth / 2, pivotY: frameHeight / 2, visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) },
+    { id: 'layer-2', name: 'Layer 2', parentId: null, hierarchyEnabled: false, transformLayer: false, pivotX: frameWidth / 2, pivotY: frameHeight / 2, visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) }
   ];
   let activeLayerId = 'layer-2';
   let undoStacks = Array.from({ length: frameCount }, () => []);
   let undoMotionStacks = Array.from({ length: frameCount }, () => []);
+  let undoPivotStacks = Array.from({ length: frameCount }, () => []);
   let redoStacks = Array.from({ length: frameCount }, () => []);
   let redoMotionStacks = Array.from({ length: frameCount }, () => []);
+  let redoPivotStacks = Array.from({ length: frameCount }, () => []);
   let activeFrame = 0;
   let drawing = false;
   let activeTool = 'brush';
@@ -1410,6 +1422,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   let recording = false;
   let paintStart = null;
   let transformStartPose = null;
+  let pivotDragging = false;
 
   function currentProjectRecord(preview = null) {
     saveActiveFrame();
@@ -1438,6 +1451,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       layers: layers.map(layer => ({
         id: layer.id,
         name: layer.name,
+        parentId: layer.parentId || null,
+        hierarchyEnabled: Boolean(layer.hierarchyEnabled),
+        transformLayer: Boolean(layer.transformLayer),
+        pivotX: layer.pivotX,
+        pivotY: layer.pivotY,
         visible: layer.visible,
         locked: layer.locked,
         muted: layer.muted,
@@ -1464,7 +1482,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   async function saveCurrentProject() {
     clearTimeout(projectSaveTimer);
     if (playbackTimer) stopPlayback();
-    paintFrame(activeFrame, false);
+    paintFrame(activeFrame, false, context, false);
     const preview = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
     paintFrame(activeFrame);
     const project = currentProjectRecord(preview);
@@ -1503,8 +1521,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       ];
       undoStacks = [[]];
       undoMotionStacks = [[]];
+      undoPivotStacks = [[]];
       redoStacks = [[]];
       redoMotionStacks = [[]];
+      redoPivotStacks = [[]];
       motionTweenEnabled = true;
       motionEasing = 'linear';
       magneticMode = true;
@@ -1568,6 +1588,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       layers: project.layers.map(layer => ({
         id: layer.id,
         name: layer.name,
+        parentId: layer.parentId,
+        hierarchyEnabled: layer.hierarchyEnabled,
+        transformLayer: layer.transformLayer,
+        pivotX: layer.pivotX,
+        pivotY: layer.pivotY,
         visible: layer.visible,
         locked: layer.locked,
         muted: layer.muted,
@@ -1601,6 +1626,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         return {
           id: String(layer.id || uuid()),
           name: String(layer.name || 'Layer'),
+          parentId: typeof layer.parentId === 'string' ? layer.parentId : null,
+          hierarchyEnabled: Boolean(layer.hierarchyEnabled),
+          transformLayer: Boolean(layer.transformLayer),
+          pivotX: Number.isFinite(Number(layer.pivotX)) ? Math.min(frameWidth, Math.max(0, Number(layer.pivotX))) : frameWidth / 2,
+          pivotY: Number.isFinite(Number(layer.pivotY)) ? Math.min(frameHeight, Math.max(0, Number(layer.pivotY))) : frameHeight / 2,
           visible: layer.visible !== false,
           locked: Boolean(layer.locked),
           muted: Boolean(layer.muted),
@@ -1620,6 +1650,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           frames
         };
       });
+      normalizeLayerHierarchy(importedLayers);
       const project = {
         id: uuid(), kind: 'desk-project', name: String(portable.name || file.name.replace(/\.(hefclip|json)$/i, '')),
         createdAt: Date.now(), updatedAt: Date.now(), width: frameWidth, height: frameHeight,
@@ -1657,6 +1688,13 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     layers = project.layers.map(layer => ({
       id: layer.id,
       name: layer.name,
+      parentId: typeof layer.parentId === 'string' && project.layers.some(parent => parent.id === layer.parentId && parent.id !== layer.id)
+        ? layer.parentId
+        : null,
+      hierarchyEnabled: Boolean(layer.hierarchyEnabled),
+      transformLayer: Boolean(layer.transformLayer),
+      pivotX: Number.isFinite(Number(layer.pivotX)) ? Math.min(frameWidth, Math.max(0, Number(layer.pivotX))) : frameWidth / 2,
+      pivotY: Number.isFinite(Number(layer.pivotY)) ? Math.min(frameHeight, Math.max(0, Number(layer.pivotY))) : frameHeight / 2,
       visible: layer.visible,
       locked: layer.locked,
       muted: Boolean(layer.muted),
@@ -1687,6 +1725,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         return data;
       })
     }));
+    normalizeLayerHierarchy(layers);
     soloLayerId = null;
     soloVisibilityBackup = null;
     currentProjectId = project.id;
@@ -1696,8 +1735,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     activeFrame = 0;
     undoStacks = Array.from({ length: frameCount }, () => []);
     undoMotionStacks = Array.from({ length: frameCount }, () => []);
+    undoPivotStacks = Array.from({ length: frameCount }, () => []);
     redoStacks = Array.from({ length: frameCount }, () => []);
     redoMotionStacks = Array.from({ length: frameCount }, () => []);
+    redoPivotStacks = Array.from({ length: frameCount }, () => []);
     motionTweenEnabled = project.motionTweenEnabled !== false;
     motionEasing = project.motionEasing || 'linear';
     magneticMode = project.magneticMode !== false;
@@ -1759,6 +1800,145 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       scale: from.scale + (to.scale - from.scale) * amount,
       rotation: from.rotation + (to.rotation - from.rotation) * amount
     };
+  }
+  function layerLocalMatrix(layer, index, pose = motionPose(layer, index)) {
+    const cosine = Math.cos(pose.rotation) * pose.scale;
+    const sine = Math.sin(pose.rotation) * pose.scale;
+    const pivotX = Number.isFinite(layer.pivotX) ? layer.pivotX : frameWidth / 2;
+    const pivotY = Number.isFinite(layer.pivotY) ? layer.pivotY : frameHeight / 2;
+    return {
+      a: cosine, b: sine, c: -sine, d: cosine,
+      e: pivotX + pose.x - cosine * pivotX + sine * pivotY,
+      f: pivotY + pose.y - sine * pivotX - cosine * pivotY
+    };
+  }
+  function multiplyMatrices(parent, local) {
+    return {
+      a: parent.a * local.a + parent.c * local.b,
+      b: parent.b * local.a + parent.d * local.b,
+      c: parent.a * local.c + parent.c * local.d,
+      d: parent.b * local.c + parent.d * local.d,
+      e: parent.a * local.e + parent.c * local.f + parent.e,
+      f: parent.b * local.e + parent.d * local.f + parent.f
+    };
+  }
+  function inverseMatrix(matrix) {
+    const determinant = matrix.a * matrix.d - matrix.b * matrix.c;
+    if (!Number.isFinite(determinant) || Math.abs(determinant) < 1e-8) return null;
+    const inverse = {
+      a: matrix.d / determinant,
+      b: -matrix.b / determinant,
+      c: -matrix.c / determinant,
+      d: matrix.a / determinant
+    };
+    inverse.e = -(inverse.a * matrix.e + inverse.c * matrix.f);
+    inverse.f = -(inverse.b * matrix.e + inverse.d * matrix.f);
+    return inverse;
+  }
+  function transformPoint(matrix, x, y) {
+    return { x: matrix.a * x + matrix.c * y + matrix.e, y: matrix.b * x + matrix.d * y + matrix.f };
+  }
+  function worldLayerMatrix(layer, index, visited = new Set()) {
+    const local = layerLocalMatrix(layer, index);
+    if (visited.has(layer.id)) return local;
+    visited.add(layer.id);
+    const parent = layers.find(item => item.id === layer.parentId);
+    return parent ? multiplyMatrices(worldLayerMatrix(parent, index, visited), local) : local;
+  }
+  function localPoseFromMatrix(matrix, layer) {
+    const scale = Math.hypot(matrix.a, matrix.b);
+    const rotation = Math.atan2(matrix.b, matrix.a);
+    const pivotX = layer.pivotX;
+    const pivotY = layer.pivotY;
+    const transformedPivot = transformPoint(matrix, pivotX, pivotY);
+    return normalizePose({
+      x: transformedPivot.x - pivotX,
+      y: transformedPivot.y - pivotY,
+      scale,
+      rotation
+    });
+  }
+  function normalizeLayerHierarchy(targetLayers) {
+    const byId = new Map(targetLayers.map(layer => [layer.id, layer]));
+    targetLayers.forEach(layer => {
+      if (!layer.hierarchyEnabled) {
+        layer.parentId = null;
+        return;
+      }
+      if (layer.parentId && (!byId.has(layer.parentId) || layer.parentId === layer.id)) {
+        layer.parentId = null;
+        layer.hierarchyEnabled = false;
+        return;
+      }
+      const visited = new Set([layer.id]);
+      let current = layer;
+      while (current.parentId) {
+        const parent = byId.get(current.parentId);
+        if (!parent || visited.has(parent.id)) {
+          current.parentId = null;
+          break;
+        }
+        visited.add(parent.id);
+        parent.hierarchyEnabled = true;
+        current = parent;
+      }
+    });
+  }
+  function setLayerPivot(layer, x, y, announce = true, refresh = true) {
+    if (!layer || !Number.isFinite(x) || !Number.isFinite(y)) return false;
+    const nextX = Math.min(frameWidth, Math.max(0, x));
+    const nextY = Math.min(frameHeight, Math.max(0, y));
+    if (nextX === layer.pivotX && nextY === layer.pivotY) return false;
+    const matrices = Array.from({ length: frameCount }, (_, index) => layerLocalMatrix(layer, index));
+    layer.pivotX = nextX;
+    layer.pivotY = nextY;
+    layer.motion = matrices.map(matrix => localPoseFromMatrix(matrix, layer));
+    doc.querySelector('#transform-pivot-x').value = String(Math.round(nextX));
+    doc.querySelector('#transform-pivot-y').value = String(Math.round(nextY));
+    paintFrame(activeFrame);
+    if (refresh) refreshTimeline();
+    scheduleProjectSave();
+    if (announce) doc.querySelector('#animation-status').textContent = `Pivot du calque « ${layer.name} » mis à jour.`;
+    return true;
+  }
+  function setLayerParent(layer, parent, announce = true) {
+    if (!layer || parent?.locked || layer === parent) return false;
+    const ancestors = new Set();
+    for (let ancestor = parent; ancestor && !ancestors.has(ancestor.id); ancestor = layers.find(item => item.id === ancestor.parentId)) {
+      ancestors.add(ancestor.id);
+      if (ancestor === layer) return false;
+    }
+    const worldMatrices = Array.from({ length: frameCount }, (_, index) => worldLayerMatrix(layer, index));
+    const parentMatrices = parent
+      ? Array.from({ length: frameCount }, (_, index) => worldLayerMatrix(parent, index))
+      : Array.from({ length: frameCount }, () => ({ a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }));
+    layer.parentId = parent?.id || null;
+    layer.hierarchyEnabled = true;
+    if (parent) parent.hierarchyEnabled = true;
+    layer.motion = worldMatrices.map((world, index) => {
+      const inverseParent = inverseMatrix(parentMatrices[index]);
+      return inverseParent ? localPoseFromMatrix(multiplyMatrices(inverseParent, world), layer) : motionPose(layer, index);
+    });
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    if (announce) {
+      doc.querySelector('#animation-status').textContent = parent
+        ? `« ${layer.name} » est maintenant enfant de « ${parent.name} ».`
+        : `« ${layer.name} » est détaché de sa hiérarchie.`;
+    }
+    return true;
+  }
+  function preserveHierarchyBeforeRemoval(removedLayers) {
+    const removedIds = new Set(removedLayers.map(layer => layer.id));
+    const children = layers.filter(layer => !removedIds.has(layer.id) && removedIds.has(layer.parentId));
+    children.forEach(child => {
+      let parent = layers.find(layer => layer.id === child.parentId);
+      while (parent && removedIds.has(parent.id)) {
+        parent = layers.find(layer => layer.id === parent.parentId);
+      }
+      setLayerParent(child, parent || null, false);
+    });
   }
   function easeProgress(value) {
     const t = Math.min(1, Math.max(0, value));
@@ -1828,20 +2008,18 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     if (imageData) copy.data.set(imageData.data);
     return copy;
   }
-  function putLayer(target, data, alpha = 1, pose = identityPose(), layer = null) {
+  function putLayer(target, data, alpha = 1, matrix = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 }, layer = null) {
     if (!data) return;
     ghostContext.clearRect(0, 0, frameWidth, frameHeight);
     ghostContext.putImageData(data, 0, 0);
     target.save();
     target.globalAlpha = alpha * (layer?.opacity ?? 1);
     target.globalCompositeOperation = layer?.blendMode || 'source-over';
-    target.translate(frameWidth / 2 + pose.x, frameHeight / 2 + pose.y);
-    target.rotate(pose.rotation);
-    target.scale(pose.scale, pose.scale);
-    target.drawImage(ghostCanvas, -frameWidth / 2, -frameHeight / 2);
+    target.transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f);
+    target.drawImage(ghostCanvas, 0, 0);
     target.restore();
   }
-  function paintFrame(index, onionSkin = onionToggle.checked, target = context) {
+  function paintFrame(index, onionSkin = onionToggle.checked, target = context, showGuides = true) {
     target.clearRect(0, 0, frameWidth, frameHeight);
     const background = layers.find(layer => layer.id === 'background');
     if (background?.visible && !background.muted) {
@@ -1854,14 +2032,14 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     }
     if (onionSkin && onionSkinEnabled && index > 0) {
       layers.filter(layer => layer.visible && !layer.muted && layer.onionSkin !== false).forEach(layer => {
-        putLayer(target, applyLayerMask(layer, displayedLayerFrame(layer, index - 1), index - 1), 0.16, motionPose(layer, index - 1), layer);
+        putLayer(target, applyLayerMask(layer, displayedLayerFrame(layer, index - 1), index - 1), 0.16, worldLayerMatrix(layer, index - 1), layer);
       });
     }
     layers.filter(layer => layer.visible && !layer.muted && (!soloLayerId || soloLayerId === layer.id)).forEach(layer => {
       const data = layer.id === activeLayerId && index === activeFrame
         ? draftContext.getImageData(0, 0, frameWidth, frameHeight)
         : displayedLayerFrame(layer, index);
-      putLayer(target, applyLayerMask(layer, data, index), 1, motionPose(layer, index), layer);
+      putLayer(target, applyLayerMask(layer, data, index), 1, worldLayerMatrix(layer, index), layer);
     });
     if (target === context && onionSkin && selectionRect) {
       if (selectionMove) {
@@ -1875,6 +2053,27 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       target.lineWidth = 1;
       target.strokeRect(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height);
       target.restore();
+    }
+    if (showGuides && target === context && activeTool === 'transform') {
+      const layer = activeLayer();
+      if (layer && !layer.locked) {
+        const pivot = transformPoint(worldLayerMatrix(layer, index), layer.pivotX, layer.pivotY);
+        target.save();
+        target.lineWidth = Math.max(1, frameWidth / canvas.getBoundingClientRect().width);
+        target.strokeStyle = '#111';
+        target.fillStyle = '#f4d35e';
+        target.beginPath();
+        target.arc(pivot.x, pivot.y, 6, 0, Math.PI * 2);
+        target.fill();
+        target.stroke();
+        target.beginPath();
+        target.moveTo(pivot.x - 9, pivot.y);
+        target.lineTo(pivot.x + 9, pivot.y);
+        target.moveTo(pivot.x, pivot.y - 9);
+        target.lineTo(pivot.x, pivot.y + 9);
+        target.stroke();
+        target.restore();
+      }
     }
   }
   function loadDraft() {
@@ -1975,7 +2174,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const menu = doc.querySelector('#desk-action-menu');
     contextMenuScope = scope;
     menu.classList.add('is-context-menu');
-    const layerActions = ['menu-select-all-layers', 'menu-copy-layer', 'menu-paste-layer', 'menu-duplicate-layer', 'menu-rename-layer', 'menu-lock-layer', 'menu-toggle-layer-onion', 'menu-focus-layer', 'menu-lock-transparency', 'menu-fill-reference', 'menu-layer-mask', 'menu-layer-properties', 'menu-rasterize-layer', 'menu-merge-down', 'menu-delete-layer'];
+    const layerActions = ['menu-select-all-layers', 'menu-add-transform-layer', 'menu-copy-layer', 'menu-paste-layer', 'menu-duplicate-layer', 'menu-rename-layer', 'menu-lock-layer', 'menu-toggle-layer-onion', 'menu-focus-layer', 'menu-lock-transparency', 'menu-fill-reference', 'menu-layer-mask', 'menu-layer-properties', 'menu-rasterize-layer', 'menu-merge-down', 'menu-delete-layer'];
     const drawingActions = ['menu-cut-drawing', 'menu-copy-drawing', 'menu-paste-drawing', 'menu-duplicate-drawing', 'menu-add-drawing', 'menu-split-drawing'];
     layerActions.forEach(id => { doc.querySelector(`#${id}`).hidden = scope !== 'layer'; });
     drawingActions.forEach(id => { doc.querySelector(`#${id}`).hidden = scope === 'layer'; });
@@ -2107,6 +2306,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         removeLayer.setAttribute('aria-label', `Supprimer ${layer.name}`);
         removeLayer.addEventListener('click', () => {
           if (layers.filter(item => !item.locked).length < 2) return;
+          preserveHierarchyBeforeRemoval([layer]);
           layers = layers.filter(item => item.id !== layer.id);
           if (activeLayerId === layer.id) activeLayerId = layers.find(item => !item.locked).id;
           selectedLayerIds = new Set([activeLayerId]);
@@ -2175,6 +2375,123 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       layerTracks.append(track);
     });
     doc.querySelector('#frame-count').textContent = `${activeFrame + 1} / ${frameCount}`;
+    renderTransformHierarchy();
+  }
+  function renderTransformHierarchy() {
+    const source = doc.querySelector('#transform-layer-source');
+    const tree = doc.querySelector('#transform-hierarchy-tree');
+    const empty = doc.querySelector('#transform-hierarchy-empty');
+    if (!source || !tree || !empty) return;
+    source.replaceChildren();
+    tree.replaceChildren();
+    layers.forEach(layer => {
+      const item = doc.createElement('button');
+      item.type = 'button';
+      item.className = `transform-layer-source-item${layer.id === activeLayerId ? ' is-active' : ''}`;
+      item.textContent = layer.name;
+      item.draggable = !layer.locked;
+      item.title = layer.locked ? 'Ce calque est verrouillé' : 'Glissez vers la hiérarchie pour l’ajouter';
+      item.addEventListener('click', () => {
+        if (layer.locked) return;
+        saveActiveFrame();
+        activeLayerId = layer.id;
+        selectedLayerIds = new Set([layer.id]);
+        loadDraft();
+        paintFrame(activeFrame);
+        refreshTimeline();
+      });
+      item.addEventListener('dragstart', event => {
+        if (layer.locked) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', `transform-layer:${layer.id}`);
+      });
+      source.append(item);
+    });
+    const renderNode = (layer, depth) => {
+      const item = doc.createElement('button');
+      item.type = 'button';
+      item.className = `transform-hierarchy-node${layer.id === activeLayerId ? ' is-active' : ''}`;
+      item.style.setProperty('--hierarchy-depth', String(depth));
+      item.textContent = layer.name;
+      item.draggable = !layer.locked;
+      item.title = 'Déposez un calque ici pour en faire un enfant';
+      item.addEventListener('click', () => {
+        if (layer.locked) return;
+        saveActiveFrame();
+        activeLayerId = layer.id;
+        selectedLayerIds = new Set([layer.id]);
+        loadDraft();
+        paintFrame(activeFrame);
+        refreshTimeline();
+      });
+      item.addEventListener('dragstart', event => {
+        if (layer.locked) {
+          event.preventDefault();
+          return;
+        }
+        event.dataTransfer.effectAllowed = 'move';
+        event.dataTransfer.setData('text/plain', `transform-layer:${layer.id}`);
+      });
+      item.addEventListener('dragover', event => {
+        if (Array.from(event.dataTransfer.types).includes('text/plain')) {
+          event.preventDefault();
+          item.classList.add('is-drop-target');
+        }
+      });
+      item.addEventListener('dragleave', () => item.classList.remove('is-drop-target'));
+      item.addEventListener('drop', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        item.classList.remove('is-drop-target');
+        const match = /^transform-layer:(.+)$/.exec(event.dataTransfer.getData('text/plain'));
+        if (!match) return;
+        const child = layers.find(candidate => candidate.id === match[1]);
+        if (!setLayerParent(child, layer)) {
+          doc.querySelector('#animation-status').textContent = 'Cette relation créerait une hiérarchie invalide.';
+        }
+      });
+      tree.append(item);
+      layers.filter(candidate => candidate.parentId === layer.id).forEach(child => renderNode(child, depth + 1));
+    };
+    const roots = layers.filter(layer => layer.hierarchyEnabled && !layers.some(candidate => candidate.id === layer.parentId && candidate.hierarchyEnabled));
+    roots.forEach(layer => renderNode(layer, 0));
+    const active = activeLayer();
+    doc.querySelector('#transform-pivot-x').value = String(Math.round(active?.pivotX ?? frameWidth / 2));
+    doc.querySelector('#transform-pivot-y').value = String(Math.round(active?.pivotY ?? frameHeight / 2));
+    tree.ondragover = event => {
+      if (Array.from(event.dataTransfer.types).includes('text/plain')) event.preventDefault();
+    };
+    tree.ondrop = event => {
+      if (event.target.closest('.transform-hierarchy-node')) return;
+      event.preventDefault();
+      const match = /^transform-layer:(.+)$/.exec(event.dataTransfer.getData('text/plain'));
+      const layer = match && layers.find(candidate => candidate.id === match[1]);
+      if (layer && !setLayerParent(layer, null)) doc.querySelector('#animation-status').textContent = 'Impossible de détacher ce calque.';
+    };
+    source.ondragover = event => {
+      if (Array.from(event.dataTransfer.types).includes('text/plain')) event.preventDefault();
+    };
+    source.ondrop = event => {
+      const match = /^transform-layer:(.+)$/.exec(event.dataTransfer.getData('text/plain'));
+      if (!match) return;
+      event.preventDefault();
+      const layer = layers.find(candidate => candidate.id === match[1]);
+      if (!layer?.hierarchyEnabled) return;
+      const oldParent = layers.find(candidate => candidate.id === layer.parentId);
+      const children = layers.filter(candidate => candidate.parentId === layer.id);
+      for (const child of children) setLayerParent(child, oldParent || null, false);
+      const worldMatrices = Array.from({ length: frameCount }, (_, index) => worldLayerMatrix(layer, index));
+      layer.parentId = null;
+      layer.hierarchyEnabled = false;
+      layer.motion = worldMatrices.map(matrix => localPoseFromMatrix(matrix, layer));
+      paintFrame(activeFrame);
+      refreshTimeline();
+      scheduleProjectSave();
+    };
+    empty.hidden = roots.length > 0;
   }
   function selectFrame(index) {
     if (playbackTimer) stopPlayback();
@@ -2204,7 +2521,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   }
   function point(event) {
     const rect = canvas.getBoundingClientRect();
-    return { x: (event.clientX - rect.left) * frameWidth / rect.width, y: (event.clientY - rect.top) * frameHeight / rect.height };
+    const location = { x: (event.clientX - rect.left) * frameWidth / rect.width, y: (event.clientY - rect.top) * frameHeight / rect.height };
+    const layer = activeLayer();
+    if (!layer || activeTool === 'transform' || activeTool === 'eyedropper') return location;
+    const inverse = inverseMatrix(worldLayerMatrix(layer, activeFrame));
+    return inverse ? transformPoint(inverse, location.x, location.y) : location;
   }
   function pointInSelection(location) {
     return selectionRect && location.x >= selectionRect.x && location.x <= selectionRect.x + selectionRect.width
@@ -2293,8 +2614,16 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const layer = activeLayer();
     motionStack.push(layer ? motionPose(layer, activeFrame) : identityPose());
     if (motionStack.length > 30) motionStack.shift();
+    undoPivotStacks[activeFrame].push(layer ? {
+      id: layer.id,
+      pivotX: layer.pivotX,
+      pivotY: layer.pivotY,
+      motion: layer.motion.map(pose => ({ ...pose }))
+    } : null);
+    if (undoPivotStacks[activeFrame].length > 30) undoPivotStacks[activeFrame].shift();
     redoStacks[activeFrame].length = 0;
     redoMotionStacks[activeFrame].length = 0;
+    redoPivotStacks[activeFrame].length = 0;
   }
   function finishStroke() {
     if (!drawing) return;
@@ -2440,6 +2769,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     pathPoints = [];
     undoStacks[activeFrame].pop();
     undoMotionStacks[activeFrame].pop();
+    undoPivotStacks[activeFrame].pop();
     paintFrame(activeFrame);
   }
   canvas.addEventListener('pointerdown', event => {
@@ -2474,7 +2804,23 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       paintFrame(activeFrame);
       return;
     }
-    if (activeTool === 'transform' && !hasPixels(draftContext.getImageData(0, 0, frameWidth, frameHeight))) return;
+    const layer = activeLayer();
+    if (activeTool === 'transform' && layer) {
+      const rect = canvas.getBoundingClientRect();
+      const pivot = transformPoint(worldLayerMatrix(layer, activeFrame), layer.pivotX, layer.pivotY);
+      const hitRadius = 12 * frameWidth / rect.width;
+      if (Math.hypot(location.x - pivot.x, location.y - pivot.y) <= hitRadius) {
+        rememberForUndo();
+        pivotDragging = true;
+        canvas.setPointerCapture(event.pointerId);
+        event.preventDefault();
+        return;
+      }
+    }
+    if (activeTool !== 'transform' && layer?.transformLayer && !['select', 'cursor'].includes(activeTool)) {
+      doc.querySelector('#animation-status').textContent = 'Un calque Transform ne contient pas de dessin. Sélectionnez un calque pixel pour dessiner.';
+      return;
+    }
     if (activeTool === 'path') {
       if (!pathBase) {
         rememberForUndo();
@@ -2514,6 +2860,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     canvas.setPointerCapture(event.pointerId);
     if (activeTool === 'transform') {
       const layer = activeLayer();
+      if (!layer || layer.locked) return;
       transformStartPose = motionPose(layer, activeFrame);
       layer.motion[activeFrame] = { ...transformStartPose };
       markActiveKeyframe();
@@ -2563,15 +2910,31 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       paintFrame(activeFrame);
       return;
     }
+    if (pivotDragging) {
+      const layer = activeLayer();
+      const inverse = layer && inverseMatrix(worldLayerMatrix(layer, activeFrame));
+      if (!layer || !inverse) return;
+      const pointerLocation = point(event);
+      const location = transformPoint(inverse, pointerLocation.x, pointerLocation.y);
+      setLayerPivot(layer, location.x, location.y, false, false);
+      return;
+    }
     if (!drawing) return;
     const location = point(event);
     if (activeTool === 'transform') {
       const layer = activeLayer();
       const startPose = transformStartPose;
+      const parent = layers.find(item => item.id === layer.parentId);
+      const parentInverse = parent ? inverseMatrix(worldLayerMatrix(parent, activeFrame)) : null;
+      const deltaX = location.x - paintStart.x;
+      const deltaY = location.y - paintStart.y;
+      const localDelta = parentInverse
+        ? { x: parentInverse.a * deltaX + parentInverse.c * deltaY, y: parentInverse.b * deltaX + parentInverse.d * deltaY }
+        : { x: deltaX, y: deltaY };
       layer.motion[activeFrame] = {
         ...startPose,
-        x: snapCanvasPosition(startPose.x + location.x - paintStart.x),
-        y: snapCanvasPosition(startPose.y + location.y - paintStart.y)
+        x: snapCanvasPosition(startPose.x + localDelta.x),
+        y: snapCanvasPosition(startPose.y + localDelta.y)
       };
       paintFrame(activeFrame);
       return;
@@ -2596,6 +2959,12 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     paintFrame(activeFrame);
   });
   function endCanvasPointer() {
+    if (pivotDragging) {
+      pivotDragging = false;
+      refreshTimeline();
+      scheduleProjectSave();
+      return;
+    }
     if (selectionMove) {
       draftContext.putImageData(selectionMove.pixels, selectionRect.x, selectionRect.y);
       selectionMove = null;
@@ -2683,7 +3052,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       ? 'Cliquez sur un dessin pour le sélectionner et le déplacer, ou faites glisser pour encadrer une zone.'
       : tool === 'path'
       ? 'Cliquez pour poser des points, puis double-cliquez ou appuyez sur Entrée pour terminer.'
-      : tool === 'transform' ? 'Glissez pour déplacer ; molette pour redimensionner, Maj + molette pour pivoter.' : 'Prêt';
+      : tool === 'transform' ? 'Glissez pour déplacer ; faites glisser le pivot pour le repositionner, molette pour redimensionner, Maj + molette pour pivoter.' : 'Prêt';
   }
   doc.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
   doc.querySelector('#brush-size').addEventListener('input', event => {
@@ -2708,6 +3077,92 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const library = doc.querySelector('#brush-library');
     library.hidden = !library.hidden;
     event.currentTarget.setAttribute('aria-expanded', String(!library.hidden));
+    if (!library.hidden) doc.querySelector('#shape-library').hidden = true;
+  });
+  function closeShapeLibrary() {
+    const library = doc.querySelector('#shape-library');
+    library.hidden = true;
+    doc.querySelector('#toggle-shape-library').setAttribute('aria-expanded', 'false');
+  }
+  function drawShapeOnCanvas(shapeName) {
+    if (activeLayer()?.transformLayer) {
+      doc.querySelector('#animation-status').textContent = 'Sélectionnez un calque pixel pour dessiner une forme.';
+      return;
+    }
+    const color = doc.querySelector('#brush-color').value;
+    const context = draftContext;
+    const centerX = frameWidth / 2;
+    const centerY = frameHeight / 2;
+    const radius = Math.max(18, Number(doc.querySelector('#brush-size').value) * 4);
+    rememberForUndo();
+    context.fillStyle = color;
+    context.beginPath();
+    switch (shapeName) {
+      case 'square':
+        context.rect(centerX - radius, centerY - radius, radius * 2, radius * 2);
+        break;
+      case 'triangle':
+        context.moveTo(centerX, centerY - radius);
+        context.lineTo(centerX + radius, centerY + radius);
+        context.lineTo(centerX - radius, centerY + radius);
+        context.closePath();
+        break;
+      case 'diamond':
+        context.moveTo(centerX, centerY - radius);
+        context.lineTo(centerX + radius, centerY);
+        context.lineTo(centerX, centerY + radius);
+        context.lineTo(centerX - radius, centerY);
+        context.closePath();
+        break;
+      case 'star': {
+        const points = 10;
+        for (let index = 0; index < points; index += 1) {
+          const angle = (Math.PI / 2) + (index * Math.PI / 5);
+          const outward = index % 2 === 0 ? radius : radius * 0.45;
+          const x = centerX + Math.cos(angle) * outward;
+          const y = centerY + Math.sin(angle) * outward;
+          if (index === 0) context.moveTo(x, y);
+          else context.lineTo(x, y);
+        }
+        context.closePath();
+        break;
+      }
+      case 'heart': {
+        const left = centerX - radius;
+        const top = centerY - radius * 0.8;
+        context.moveTo(centerX, centerY + radius * 0.9);
+        context.bezierCurveTo(centerX + radius * 1.1, top + radius * 1.1, centerX + radius * 1.7, top + radius * 0.15, centerX, top - radius * 0.75);
+        context.bezierCurveTo(centerX - radius * 1.7, top + radius * 0.15, centerX - radius * 1.1, top + radius * 1.1, centerX, centerY + radius * 0.9);
+        context.closePath();
+        break;
+      }
+      case 'circle':
+      default:
+        context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        break;
+    }
+    context.fill();
+    saveActiveFrame();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    closeShapeLibrary();
+    setTool('brush');
+  }
+  doc.querySelector('#toggle-shape-library').addEventListener('click', event => {
+    const library = doc.querySelector('#shape-library');
+    library.hidden = !library.hidden;
+    event.currentTarget.setAttribute('aria-expanded', String(!library.hidden));
+    if (!library.hidden) doc.querySelector('#brush-library').hidden = true;
+  });
+  doc.querySelector('.shape-library-close').addEventListener('click', closeShapeLibrary);
+  doc.querySelectorAll('[data-shape]').forEach(button => button.addEventListener('click', () => {
+    drawShapeOnCanvas(button.dataset.shape);
+  }));
+  doc.addEventListener('pointerdown', event => {
+    if (!event.target.closest('#toggle-shape-library') && !event.target.closest('.shape-library')) {
+      closeShapeLibrary();
+    }
   });
   doc.querySelector('#add-keyframe').addEventListener('click', () => {
     const layer = activeLayer();
@@ -2743,10 +3198,26 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const previous = undoStacks[activeFrame].pop();
     if (!previous) return;
     const previousMotion = undoMotionStacks[activeFrame].pop();
+    const previousPivot = undoPivotStacks[activeFrame].pop();
     redoStacks[activeFrame].push(cloneImageData(draftContext.getImageData(0, 0, frameWidth, frameHeight)));
     redoMotionStacks[activeFrame].push(activeLayer() ? normalizePose(activeLayer().motion[activeFrame]) : identityPose());
+    const currentLayer = activeLayer();
+    redoPivotStacks[activeFrame].push(currentLayer ? {
+      id: currentLayer.id,
+      pivotX: currentLayer.pivotX,
+      pivotY: currentLayer.pivotY,
+      motion: currentLayer.motion.map(pose => ({ ...pose }))
+    } : null);
     draftContext.putImageData(previous, 0, 0);
     if (previousMotion) activeLayer().motion[activeFrame] = previousMotion;
+    if (previousPivot) {
+      const layer = layers.find(candidate => candidate.id === previousPivot.id);
+      if (layer) {
+        layer.pivotX = previousPivot.pivotX;
+        layer.pivotY = previousPivot.pivotY;
+        layer.motion = previousPivot.motion;
+      }
+    }
     saveActiveFrame();
     paintFrame(activeFrame);
     refreshTimeline();
@@ -2757,9 +3228,25 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     if (!next) return;
     undoStacks[activeFrame].push(cloneImageData(draftContext.getImageData(0, 0, frameWidth, frameHeight)));
     const nextMotion = redoMotionStacks[activeFrame].pop();
+    const nextPivot = redoPivotStacks[activeFrame].pop();
     undoMotionStacks[activeFrame].push(activeLayer() ? motionPose(activeLayer(), activeFrame) : identityPose());
+    const currentLayer = activeLayer();
+    undoPivotStacks[activeFrame].push(currentLayer ? {
+      id: currentLayer.id,
+      pivotX: currentLayer.pivotX,
+      pivotY: currentLayer.pivotY,
+      motion: currentLayer.motion.map(pose => ({ ...pose }))
+    } : null);
     draftContext.putImageData(next, 0, 0);
     if (nextMotion && activeLayer()) activeLayer().motion[activeFrame] = nextMotion;
+    if (nextPivot) {
+      const layer = layers.find(candidate => candidate.id === nextPivot.id);
+      if (layer) {
+        layer.pivotX = nextPivot.pivotX;
+        layer.pivotY = nextPivot.pivotY;
+        layer.motion = nextPivot.motion;
+      }
+    }
     saveActiveFrame();
     paintFrame(activeFrame);
     refreshTimeline();
@@ -2785,8 +3272,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     });
     undoStacks.splice(activeFrame, 1);
     undoMotionStacks.splice(activeFrame, 1);
+    undoPivotStacks.splice(activeFrame, 1);
     redoStacks.splice(activeFrame, 1);
     redoMotionStacks.splice(activeFrame, 1);
+    redoPivotStacks.splice(activeFrame, 1);
     frameCount -= 1;
     activeFrame = Math.min(activeFrame, frameCount - 1);
     loadDraft();
@@ -2807,8 +3296,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     });
     undoStacks.splice(sourceIndex + 1, 0, []);
     undoMotionStacks.splice(sourceIndex + 1, 0, []);
+    undoPivotStacks.splice(sourceIndex + 1, 0, []);
     redoStacks.splice(sourceIndex + 1, 0, []);
     redoMotionStacks.splice(sourceIndex + 1, 0, []);
+    redoPivotStacks.splice(sourceIndex + 1, 0, []);
     activeFrame += 1;
     frameCount += 1;
     loadDraft();
@@ -2823,6 +3314,18 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   doc.querySelector('#add-layer').addEventListener('click', () => {
     const count = layers.filter(layer => !layer.locked).length + 1;
     addLayerToProject(makeLayer(`Layer ${count + 1}`));
+  });
+  doc.querySelector('#menu-add-transform-layer').addEventListener('click', () => {
+    const layer = makeLayer('Transform Layer');
+    layer.transformLayer = true;
+    layer.hierarchyEnabled = true;
+    addLayerToProject(layer);
+    setTool('transform');
+    const panel = doc.querySelector('#transform-hierarchy-panel');
+    panel.hidden = false;
+    hierarchyToggle.setAttribute('aria-expanded', 'true');
+    hideActionMenu();
+    doc.querySelector('#animation-status').textContent = 'Transform Layer créé. Glissez des calques dans le panneau Hierarchy pour les rattacher.';
   });
   doc.querySelector('#previous-frame').addEventListener('click', () => selectFrame(Math.max(0, activeFrame - 1)));
   doc.querySelector('#timeline-prev').addEventListener('click', () => selectFrame(Math.max(0, activeFrame - 1)));
@@ -2850,8 +3353,32 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   doc.querySelector('#toggle-settings').addEventListener('click', () => {
     doc.querySelector('#brush-settings').hidden = !doc.querySelector('#brush-settings').hidden;
   });
-  doc.querySelector('#toggle-layers').addEventListener('click', () => {
+  const hierarchyToggle = doc.querySelector('#toggle-layers');
+  hierarchyToggle.title = 'Transform Hierarchy';
+  hierarchyToggle.setAttribute('aria-label', 'Afficher la hiérarchie de transformations');
+  hierarchyToggle.setAttribute('aria-controls', 'transform-hierarchy-panel');
+  hierarchyToggle.setAttribute('aria-expanded', 'false');
+  hierarchyToggle.addEventListener('click', () => {
     doc.querySelector('#desk-timeline').classList.remove('is-collapsed');
+    const panel = doc.querySelector('#transform-hierarchy-panel');
+    panel.hidden = !panel.hidden;
+    hierarchyToggle.setAttribute('aria-expanded', String(!panel.hidden));
+  });
+  doc.querySelector('#close-transform-hierarchy').addEventListener('click', () => {
+    doc.querySelector('#transform-hierarchy-panel').hidden = true;
+    hierarchyToggle.setAttribute('aria-expanded', 'false');
+  });
+  doc.querySelector('#transform-pivot-x').addEventListener('change', event => {
+    const layer = activeLayer();
+    if (!layer) return;
+    rememberForUndo();
+    setLayerPivot(layer, Number(event.currentTarget.value), layer.pivotY);
+  });
+  doc.querySelector('#transform-pivot-y').addEventListener('change', event => {
+    const layer = activeLayer();
+    if (!layer) return;
+    rememberForUndo();
+    setLayerPivot(layer, layer.pivotX, Number(event.currentTarget.value));
   });
   doc.querySelector('#toggle-timeline').addEventListener('click', event => {
     toggleTimeline(event.currentTarget);
@@ -2917,14 +3444,14 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     saveActiveFrame();
     playbackIndex = 0;
     doc.querySelectorAll('#play-animation, #timeline-play, #stage-play').forEach(button => { button.textContent = '■'; });
-    paintFrame(playbackIndex, false);
+    paintFrame(playbackIndex, false, context, false);
     playbackTimer = setInterval(() => {
       const nextIndex = playbackIndex + 1;
       if (nextIndex >= frameCount) {
         if (doc.querySelector('#loop-playback').getAttribute('aria-pressed') === 'true') playbackIndex = 0;
         else { stopPlayback(); return; }
       } else playbackIndex = nextIndex;
-      paintFrame(playbackIndex, false);
+      paintFrame(playbackIndex, false, context, false);
     }, 1000 / Number(doc.querySelector('#animation-fps').value));
   }
   doc.querySelector('#play-animation').addEventListener('click', togglePlayback);
@@ -2999,6 +3526,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     scheduleProjectSave();
   }
   function copyDrawing() {
+    if (activeLayer()?.transformLayer) {
+      doc.querySelector('#animation-status').textContent = 'Un calque Transform ne contient pas de dessin à copier.';
+      return false;
+    }
     saveActiveFrame();
     const area = selectionRect
       ? selectionPixelsAt(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height)
@@ -3022,11 +3553,15 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     doc.querySelector('#animation-status').textContent = 'Dessin coupé.';
   }
   function pasteDrawing() {
+    if (activeLayer()?.transformLayer) {
+      doc.querySelector('#animation-status').textContent = 'Sélectionnez un calque pixel pour coller le dessin.';
+      return;
+    }
     if (!drawingClipboard || activeLayer()?.locked) return;
     rememberForUndo();
     const targetX = selectionRect ? selectionRect.x : drawingClipboard.x;
     const targetY = selectionRect ? selectionRect.y : drawingClipboard.y;
-    draftContext.putImageData(cloneImageData(drawingClipboard.imageData), targetX, targetY);
+    draftContext.putImageData(drawingClipboard.imageData, targetX, targetY);
     selectionRect = { x: targetX, y: targetY, width: drawingClipboard.imageData.width, height: drawingClipboard.imageData.height };
     saveActiveFrame();
     markActiveKeyframe();
@@ -3051,6 +3586,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   function removeSelectedLayers() {
     const removable = layers.filter(layer => selectedLayerIds.has(layer.id) && !layer.locked);
     if (!removable.length || layers.filter(layer => !layer.locked).length <= removable.length) return;
+    preserveHierarchyBeforeRemoval(removable);
     layers = layers.filter(layer => !removable.includes(layer));
     const next = layers.find(layer => !layer.locked);
     if (!layers.some(layer => layer.id === activeLayerId)) activeLayerId = next.id;
@@ -3280,13 +3816,14 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const layer = selectedLayer();
     if (layer) {
       saveActiveFrame();
+      preserveHierarchyBeforeRemoval([layer]);
       const bakedCanvas = doc.createElement('canvas');
       bakedCanvas.width = frameWidth;
       bakedCanvas.height = frameHeight;
       const bakedContext = bakedCanvas.getContext('2d');
       layer.frames = Array.from({ length: frameCount }, (_, index) => {
         bakedContext.clearRect(0, 0, frameWidth, frameHeight);
-        putLayer(bakedContext, applyLayerMask(layer, displayedLayerFrame(layer, index), index), 1, motionPose(layer, index), layer);
+        putLayer(bakedContext, applyLayerMask(layer, displayedLayerFrame(layer, index), index), 1, worldLayerMatrix(layer, index), layer);
         return bakedContext.getImageData(0, 0, frameWidth, frameHeight);
       });
       layer.opacity = 1;
@@ -3294,6 +3831,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       layer.motion = Array.from({ length: frameCount }, identityPose);
       layer.keyframes = layer.frames.map(hasPixels);
       layer.type = 'pixel';
+      layer.parentId = null;
+      layer.hierarchyEnabled = false;
+      layer.pivotX = frameWidth / 2;
+      layer.pivotY = frameHeight / 2;
       layer.maskEnabled = false;
       layer.maskFrames = null;
       loadDraft();
@@ -3313,13 +3854,14 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       return;
     }
     saveActiveFrame();
+    preserveHierarchyBeforeRemoval([upper, lower]);
     const mergedFrames = Array.from({ length: frameCount }, (_, index) => {
       const output = doc.createElement('canvas');
       output.width = frameWidth;
       output.height = frameHeight;
       const outputContext = output.getContext('2d');
-      putLayer(outputContext, applyLayerMask(lower, displayedLayerFrame(lower, index), index), 1, motionPose(lower, index), lower);
-      putLayer(outputContext, applyLayerMask(upper, displayedLayerFrame(upper, index), index), 1, motionPose(upper, index), upper);
+      putLayer(outputContext, applyLayerMask(lower, displayedLayerFrame(lower, index), index), 1, worldLayerMatrix(lower, index), lower);
+      putLayer(outputContext, applyLayerMask(upper, displayedLayerFrame(upper, index), index), 1, worldLayerMatrix(upper, index), upper);
       return outputContext.getImageData(0, 0, frameWidth, frameHeight);
     });
     lower.frames = mergedFrames;
@@ -3330,6 +3872,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     lower.lockTransparency = false;
     lower.maskEnabled = false;
     lower.maskFrames = null;
+    lower.parentId = null;
+    lower.hierarchyEnabled = false;
+    lower.pivotX = frameWidth / 2;
+    lower.pivotY = frameHeight / 2;
     layers = layers.filter(layer => layer !== upper);
     activeLayerId = lower.id;
     selectedLayerIds = new Set([lower.id]);
