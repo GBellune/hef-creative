@@ -8,6 +8,9 @@
     for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
     crcTable[index] = value >>> 0;
   }
+  function snapCanvasPosition(value) {
+    return magneticMode ? Math.round(value / 10) * 10 : value;
+  }
   let propertiesLayerId = null;
   function openLayerProperties(layer = activeLayer()) {
     if (!layer) return;
@@ -27,7 +30,8 @@
   function makeLayer(name, id = `layer-${uuid()}`) {
     return {
       id, name, visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over',
-      type: 'pixel', onionSkin: true, ownFps: false, fps: Number(doc.querySelector('#animation-fps').value),
+      type: 'pixel', onionSkin: true, lockTransparency: false, fillReference: false, maskEnabled: false,
+      ownFps: false, fps: Number(doc.querySelector('#animation-fps').value),
       loopMode: 'normal', frames: Array(frameCount).fill(null), keyframes: Array(frameCount).fill(false),
       motion: Array.from({ length: frameCount }, identityPose)
     };
@@ -36,6 +40,7 @@
     return {
       ...source, id: `layer-${uuid()}`, name,
       frames: source.frames.map(frame => frame ? cloneImageData(frame) : null),
+      maskFrames: source.maskFrames?.map(frame => frame ? cloneImageData(frame) : null) || null,
       keyframes: source.keyframes.slice(),
       motion: source.motion.map(pose => normalizePose(pose))
     };
@@ -139,18 +144,76 @@
   projectView.id = 'projects-view';
   main.insertAdjacentHTML('beforeend', `
     <section class="tool-view" id="addons-view" hidden aria-labelledby="addons-title">
-      <p class="eyebrow">Atelier Minecraft</p>
-      <h1 id="addons-title">Créez votre add-on</h1>
-      <p class="intro tool-intro">Créez des objets, blocs, créatures, recettes ou disques musicaux et exportez un pack prêt à importer dans Minecraft Bedrock.</p>
+      <header class="addon-manager-header">
+        <h1 id="addons-title">Addons Maker</h1>
+        <nav class="addon-manager-tabs" aria-label="Navigation de l’atelier Minecraft">
+          <button type="button" data-addon-tab="creator" aria-selected="true">Creator</button>
+          <button type="button" data-addon-tab="addons" aria-selected="false">Addons</button>
+          <button type="button" data-addon-tab="showcase" aria-selected="false">Show Case</button>
+        </nav>
+      </header>
+      <section class="addon-manager-panel" id="addon-creator-panel" data-addon-panel="creator">
+          <div id="addon-creator-catalog">
+            <div class="addon-catalog-toolbar">
+              <label for="addon-creator-filter">Filtrer</label>
+              <select id="addon-creator-filter" aria-label="Filtrer par type"><option>All</option><option>Objects</option><option>Blocks</option><option>Creatures</option><option>Recipes</option><option>Music discs</option></select>
+              <button type="button" class="addon-sort-button" aria-label="Trier par date" title="Trier par date">▣↓</button>
+            </div>
+            <div class="addon-catalog-grid">
+              <button type="button" class="addon-new-card" data-addon-new>
+                <span class="addon-new-label">New</span><span class="addon-new-icon" aria-hidden="true">+</span>
+              </button>
+            </div>
+          </div>
+          <div id="addon-creator-form" hidden>
+          <button type="button" class="addon-back-button" id="addon-back-to-catalog">← Retour aux add-ons</button>
+          <section class="addon-type-picker" id="addon-type-picker" aria-labelledby="addon-type-title">
+            <h2 id="addon-type-title">Choisir un type de contenu</h2>
+            <label class="addon-type-search"><span aria-hidden="true">⌕</span><input id="addon-type-search" type="search" placeholder="Rechercher un type…" aria-label="Rechercher un type de contenu"></label>
+            <div class="addon-type-grid" id="addon-type-grid">
+              <button type="button" data-addon-choice="menu-group"><span>▦</span>Custom Group</button>
+              <button type="button" data-addon-choice="entity"><span>♟</span>Custom Entity</button>
+              <button type="button" data-addon-choice="weapon"><span>⚔</span>Custom Weapon</button>
+              <button type="button" data-addon-choice="block"><span>▧</span>Custom Block</button>
+              <button type="button" data-addon-choice="model-block"><span>⬡</span>Custom Model Block</button>
+              <button type="button" data-addon-choice="projectile"><span>➤</span>Custom Projectile</button>
+              <button type="button" data-addon-choice="item"><span>◆</span>Custom Item</button>
+              <button type="button" data-addon-choice="script"><span>⌘</span>Script</button>
+              <button type="button" data-addon-choice="command"><span>›_</span>Custom Command</button>
+              <button type="button" data-addon-choice="dimension"><span>◉</span>Custom Dimension</button>
+              <button type="button" data-addon-choice="music-disc"><span>♫</span>Music Disc</button>
+              <button type="button" data-addon-choice="recipe"><span>▤</span>Recipe</button>
+              <button type="button" data-addon-choice="food"><span>✿</span>Food Item</button>
+              <button type="button" data-addon-choice="armor"><span>⬟</span>Armor</button>
+            </div>
+            <p class="addon-type-empty" id="addon-type-empty" hidden>Aucun type ne correspond à cette recherche.</p>
+          </section>
+          <div id="addon-editor" hidden>
+        <p class="eyebrow">Atelier Minecraft</p>
+        <h2 class="addon-form-title" id="addon-editor-title">Créez votre add-on</h2>
+        <p class="intro tool-intro" id="addon-editor-help">Configurez le contenu puis exportez un pack pour Minecraft Bedrock.</p>
       <div class="addon-layout">
         <form class="addon-form" id="addon-form">
           <div class="addon-fields">
-            <div class="field"><label for="addon-kind">Type de contenu</label><select id="addon-kind"><option value="item">Objet personnalisé</option><option value="block">Bloc personnalisé</option><option value="entity">Entité personnalisée</option><option value="recipe">Recette personnalisée</option><option value="music-disc">Disque musical personnalisé</option></select></div>
+            <div class="field"><label for="addon-kind">Type de contenu</label><select id="addon-kind"><option value="item">Custom Item</option><option value="weapon">Custom Weapon</option><option value="block">Custom Block</option><option value="model-block">Custom Model Block</option><option value="entity">Custom Entity</option><option value="projectile">Custom Projectile</option><option value="menu-group">Custom Menu Group</option><option value="script">Script</option><option value="command">Custom Command (script event)</option><option value="dimension">Custom Dimension (experimental)</option><option value="recipe">Recipe</option><option value="music-disc">Music Disc</option><option value="food">Food Item</option><option value="armor">Armor</option></select></div>
             <div class="field"><label for="addon-name">Nom</label><input id="addon-name" maxlength="40" required value="Cristal solaire"></div>
             <div class="field"><label for="addon-id">Identifiant technique</label><div class="identifier"><span>hefcreative:</span><input id="addon-id" maxlength="32" pattern="[a-z0-9_]+" required value="cristal_solaire" aria-describedby="addon-id-help"></div><small id="addon-id-help">Minuscules, chiffres et tirets bas. Préfixe hefcreative: ajouté à l’export.</small></div>
             <div class="field addon-kind-panel" data-addon-kind="item"><label for="addon-stack">Taille de pile</label><select id="addon-stack"><option>1</option><option>16</option><option selected>64</option></select><label class="check-field"><input id="addon-hand" type="checkbox"> Tenir l’objet comme un outil</label></div>
             <div class="field addon-kind-panel" data-addon-kind="block" hidden><label for="addon-hardness">Résistance à la pioche (secondes)</label><input id="addon-hardness" type="number" min="0" max="3600" step="0.1" value="1.5" required></div>
+            <div class="field addon-kind-panel" data-addon-kind="model-block" hidden><label for="addon-hardness-model">Résistance à la pioche (secondes)</label><input id="addon-hardness-model" type="number" min="0" max="3600" step="0.1" value="1.5" required><small>Exporte un bloc expérimental avec géométrie cubique personnalisée.</small></div>
             <div class="field addon-kind-panel" data-addon-kind="entity" hidden><label for="addon-health">Points de vie</label><input id="addon-health" type="number" min="1" max="1024" step="1" value="20" required><small>Crée une créature passive cubique avec un œuf d’apparition.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="weapon" hidden><label for="addon-weapon-damage">Dégâts</label><input id="addon-weapon-damage" type="number" min="1" max="100" value="7" required><label for="addon-weapon-durability">Durabilité</label><input id="addon-weapon-durability" type="number" min="1" max="10000" value="500" required></div>
+            <div class="field addon-kind-panel" data-addon-kind="projectile" hidden><label for="addon-projectile-damage">Dégâts du projectile</label><input id="addon-projectile-damage" type="number" min="1" max="100" value="5" required><small>Exporte un objet lanceable et une entité projectile simple. Les mécaniques avancées nécessitent des scripts.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="menu-group" hidden><label for="addon-group-name">Nom du groupe</label><input id="addon-group-name" maxlength="32" value="Mes créations" required><small>Ajoute une catégorie de groupe au menu créatif pour l’objet.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="script" hidden><label for="addon-script-code">Code JavaScript du script</label><textarea id="addon-script-code" rows="9" spellcheck="false" required>import { world } from "@minecraft/server";
+
+world.afterEvents.playerSpawn.subscribe((event) => {
+  if (event.initialSpawn) event.player.sendMessage("Script HEF Creative actif");
+});</textarea><small>Le code est inclus dans le module JavaScript du pack. Vérifiez la compatibilité de l’API avec votre version Bedrock.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="command" hidden><label for="addon-command-message">Réponse de la commande</label><input id="addon-command-message" maxlength="100" value="Commande exécutée !" required><small>Bedrock n’autorise pas l’enregistrement d’une nouvelle commande arbitraire. Le script répond à <code>/scriptevent hefcreative:identifiant</code>.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="dimension" hidden><label for="addon-dimension-generator">Générateur</label><select id="addon-dimension-generator"><option value="overworld">Overworld</option><option value="nether">Nether</option><option value="the_end">The End</option></select><small>La prise en charge des dimensions personnalisées varie selon la version Bedrock et peut nécessiter les fonctionnalités expérimentales. Le pack inclura un modèle à valider avec la version cible.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="food" hidden><label for="addon-food-hunger">Faim restaurée</label><input id="addon-food-hunger" type="number" min="1" max="20" value="4" required><label class="check-field"><input id="addon-food-always" type="checkbox"> Consommable même avec la barre de faim pleine</label></div>
+            <div class="field addon-kind-panel" data-addon-kind="armor" hidden><label for="addon-armor-slot">Emplacement</label><select id="addon-armor-slot"><option value="slot.armor.head">Tête</option><option value="slot.armor.chest">Torse</option><option value="slot.armor.legs">Jambes</option><option value="slot.armor.feet">Pieds</option></select><label for="addon-armor-durability">Durabilité</label><input id="addon-armor-durability" type="number" min="1" max="10000" value="300" required></div>
             <div class="field addon-kind-panel" data-addon-kind="recipe" hidden>
               <label for="recipe-mode">Type de recette</label><select id="recipe-mode"><option value="shaped">Forme précise (3 × 3)</option><option value="shapeless">Sans forme précise</option></select>
               <label for="recipe-ingredients" id="recipe-ingredients-label">Grille : un identifiant d’objet par case, séparé par des virgules (ligne vide = case vide)</label><textarea id="recipe-ingredients" rows="3" spellcheck="false">minecraft:stone,minecraft:stone,minecraft:stone
@@ -176,6 +239,32 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           <div class="pack-includes"><span class="pack-check">✓</span><span><strong>Pack de ressources</strong><small>Textures et ressources audio</small></span></div>
         </div>
       </div>
+        </div>
+          </div>
+      </section>
+      <section class="addon-manager-panel" id="addon-library-panel" data-addon-panel="addons" hidden>
+        <div class="addon-catalog-toolbar">
+          <label for="addon-catalog-filter">Filtrer</label>
+          <select id="addon-catalog-filter" aria-label="Filtrer les add-ons"><option>All</option><option>Objects</option><option>Blocks</option><option>Creatures</option><option>Recipes</option><option>Music discs</option></select>
+          <button type="button" class="addon-sort-button" aria-label="Trier par date" title="Trier par date">▣↓</button>
+        </div>
+        <div class="addon-catalog-grid">
+          <button type="button" class="addon-new-card" data-addon-new>
+            <span class="addon-new-label">New</span><span class="addon-new-icon" aria-hidden="true">+</span>
+          </button>
+        </div>
+      </section>
+      <section class="addon-manager-panel" id="addon-showcase-panel" data-addon-panel="showcase" hidden>
+        <div class="addon-catalog-toolbar">
+          <label for="addon-showcase-filter">Filtrer</label>
+          <select id="addon-showcase-filter" aria-label="Filtrer la vitrine"><option>All</option><option>Objects</option><option>Blocks</option><option>Creatures</option><option>Recipes</option><option>Music discs</option></select>
+        </div>
+        <div class="addon-catalog-grid">
+          <button type="button" class="addon-new-card" data-addon-new>
+            <span class="addon-new-label">New</span><span class="addon-new-icon" aria-hidden="true">+</span>
+          </button>
+        </div>
+      </section>
     </section>
     <section class="tool-view animation-view" id="animation-view" hidden aria-label="Animation Desk">
       <header class="desk-topbar">
@@ -185,8 +274,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       </header>
       <div class="desk-workspace">
         <nav class="desk-tool-rail" aria-label="Outils de dessin">
-          <button type="button" data-tool="cursor" title="Pointeur" aria-label="Pointeur">↖</button><button type="button" data-tool="select" title="Sélection" aria-label="Sélection">▧</button><button type="button" data-tool="transform" title="Glisser pour déplacer, molette pour redimensionner, Maj + molette pour pivoter" aria-label="Transformer le calque">⤧</button><span></span><button class="selected" type="button" data-tool="brush" title="Pinceau" aria-label="Pinceau">╱</button><button type="button" data-tool="erase" title="Gomme" aria-label="Gomme">◩</button><button type="button" data-tool="smudge" title="Flou" aria-label="Flou">✋</button><button type="button" data-tool="fill" title="Remplir le calque" aria-label="Remplir le calque">◒</button><button type="button" data-tool="eyedropper" title="Pipette" aria-label="Pipette">⌖</button><button type="button" data-tool="text" title="Texte" aria-label="Texte">T</button><button type="button" data-tool="path" title="Cliquez pour poser les points du tracé, puis double-cliquez ou appuyez sur Entrée" aria-label="Outil de tracé">／</button>
-          <button class="desk-tool-bottom" id="undo-frame" type="button" title="Annuler le dernier trait" aria-label="Annuler">↶</button><button id="clear-frame" type="button" title="Effacer l’image" aria-label="Effacer l’image">⌫</button>
+          <button type="button" data-tool="cursor" title="Pointeur" aria-label="Pointeur">↖</button><button type="button" data-tool="select" title="Cliquez sur un dessin pour le sélectionner, ou faites glisser pour encadrer une zone" aria-label="Sélectionner un dessin">▧</button><button type="button" data-tool="transform" title="Glisser pour déplacer, molette pour redimensionner, Maj + molette pour pivoter" aria-label="Transformer le calque">⤧</button><span></span><button class="selected" type="button" data-tool="brush" title="Pinceau" aria-label="Pinceau">╱</button><button type="button" data-tool="erase" title="Gomme" aria-label="Gomme">◩</button><button type="button" data-tool="smudge" title="Flou" aria-label="Flou">✋</button><button type="button" data-tool="fill" title="Remplir le calque" aria-label="Remplir le calque">◒</button><button type="button" data-tool="eyedropper" title="Pipette" aria-label="Pipette">⌖</button><button type="button" data-tool="text" title="Texte" aria-label="Texte">T</button><button type="button" data-tool="path" title="Cliquez pour poser les points du tracé, puis double-cliquez ou appuyez sur Entrée" aria-label="Outil de tracé">／</button>
+          <button class="desk-tool-bottom" id="undo-frame" type="button" title="Annuler (Ctrl+Z)" aria-label="Annuler">↶</button><button id="redo-frame" type="button" title="Rétablir (Ctrl+Y)" aria-label="Rétablir">↷</button><button id="clear-frame" type="button" title="Effacer l’image" aria-label="Effacer l’image">⌫</button>
         </nav>
         <div class="desk-stage-column">
           <div class="desk-canvas-area"><div class="canvas-matte"><canvas id="drawing-canvas" width="640" height="400" aria-label="Zone de dessin de l’image courante" role="img"></canvas></div></div>
@@ -198,7 +287,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         <header class="timeline-topbar"><div class="timeline-top-left"><button type="button" id="toggle-timeline" aria-label="Réduire la timeline" title="Réduire la timeline">⌄</button><strong>Timeline</strong><span id="frame-count">20 images</span></div><div class="timeline-mini-controls"><button type="button" id="timeline-prev" aria-label="Reculer d’une image">◀</button><button type="button" id="timeline-play" aria-label="Lire l’animation">▶</button><button type="button" id="timeline-next" aria-label="Avancer d’une image">▶|</button><button type="button" id="open-markers" title="Rechercher et gérer les marqueurs">Marqueurs</button><select id="motion-easing" aria-label="Courbe d’accélération"><option value="linear">Linéaire</option><option value="hold">Maintien</option><option value="easeIn">Ease In</option><option value="easeOut">Ease Out</option><option value="easeInOut">Ease In Out</option><option value="sine">Sine</option><option value="circular">Circular</option><option value="back">Back</option><option value="elastic">Elastic</option><option value="bounce">Bounce</option><option value="exponential">Exponential</option><option value="cubic">Cubic</option><option value="quartic">Quartic</option><option value="quintic">Quintic</option></select><label title="Zoom de la timeline"><input type="range" min="42" max="100" value="52" id="timeline-scale"></label></div><span class="scene-info">Scene 1 <span>24 fps</span></span></header>
         <div class="timeline-body"><div class="layer-column"><div class="layer-column-heading">Calques <button type="button" id="add-layer" title="Ajouter un calque" aria-label="Ajouter un calque">+</button></div><div id="layer-list"></div></div><div class="track-viewport"><div id="frame-ruler"></div><div id="layer-tracks"></div><div class="frame-commands"><button type="button" id="add-keyframe" title="Créer une image clé sur le calque actif">◆ Image clé</button><label class="motion-tween-control" title="Interpoler position, taille et rotation entre les images clés"><input id="motion-tween" type="checkbox" checked> Déplacement auto</label><button type="button" id="add-frame">＋ Add Drawing</button><button type="button" id="duplicate-frame">⧉ Duplicate</button><button type="button" id="extend-frame">↔ Extend</button><button type="button" id="delete-frame" aria-label="Supprimer l’image sélectionnée">⌫</button></div></div></div>
       </section>
-      <div class="desk-action-menu" id="desk-action-menu" hidden><button type="button" id="menu-copy-drawing">Copier le dessin</button><button type="button" id="menu-paste-drawing">Coller le dessin</button><button type="button" id="menu-select-all-layers">Sélectionner tous les calques</button><button type="button" id="menu-copy-layer">Copier le calque</button><button type="button" id="menu-paste-layer">Coller le calque</button><button type="button" id="menu-duplicate-layer">Dupliquer le calque</button><button type="button" id="menu-rename-layer">Renommer le calque</button><button type="button" id="menu-lock-layer">Verrouiller / déverrouiller</button><button type="button" id="menu-layer-properties">Propriétés du calque</button><button type="button" id="menu-rasterize-layer">Rasteriser le calque</button><button type="button" id="menu-add-drawing">Ajouter un dessin</button><button type="button" id="menu-split-drawing">Séparer le dessin</button><button type="button" id="menu-create-symbol">Créer un symbole</button><button type="button" id="menu-open-symbols">Symboles</button><button type="button" id="menu-add-marker">Ajouter un marqueur</button><button type="button" id="menu-delete-selection">Supprimer la sélection</button><hr><button type="button" id="menu-export-video">Exporter la vidéo…</button><button type="button" id="export-frame">Exporter l’image PNG</button><button type="button" id="menu-clear-frame">Effacer l’image courante</button></div>
+      <div class="desk-action-menu" id="desk-action-menu" hidden><button type="button" id="menu-cut-drawing">Couper</button><button type="button" id="menu-copy-drawing">Copier</button><button type="button" id="menu-paste-drawing">Coller</button><button type="button" id="menu-duplicate-drawing">Dupliquer le dessin</button><button type="button" id="menu-delete-selection">Supprimer</button><hr><button type="button" id="menu-select-all-layers">Sélectionner tous les calques</button><button type="button" id="menu-rename-layer">✎ Renommer</button><button type="button" id="menu-lock-layer">♙ Verrouiller</button><button type="button" id="menu-toggle-layer-onion">◐ Désactiver la pelure d’oignon</button><button type="button" id="menu-copy-layer">▢ Copier</button><button type="button" id="menu-duplicate-layer">▢ Dupliquer</button><button type="button" id="menu-focus-layer">◎ Focus</button><button type="button" id="menu-lock-transparency">▦ Verrouiller la transparence</button><button type="button" id="menu-fill-reference">◈ Définir comme référence de remplissage</button><button type="button" id="menu-layer-mask">▧ Ajouter un masque</button><button type="button" id="menu-layer-properties">Propriétés du calque</button><button type="button" id="menu-paste-layer">Coller le calque</button><button type="button" id="menu-rasterize-layer">▦ Rasteriser</button><button type="button" id="menu-merge-down">⇩ Fusionner vers le bas</button><button type="button" id="menu-create-symbol">◇ Créer un symbole</button><button type="button" id="menu-open-symbols">Symboles</button><button type="button" id="menu-delete-layer">▤ Supprimer le calque</button><button type="button" id="menu-add-drawing">Ajouter un dessin</button><button type="button" id="menu-split-drawing">Séparer le dessin</button><button type="button" id="menu-add-marker">Ajouter un marqueur</button><hr><button type="button" id="menu-export-video">Exporter la vidéo…</button><button type="button" id="export-frame">Exporter l’image PNG</button><button type="button" id="menu-clear-frame">Effacer l’image courante</button></div>
       <dialog class="desk-properties-dialog" id="desk-properties-dialog" aria-labelledby="desk-properties-title"><form method="dialog"><header><h2 id="desk-properties-title">Propriétés du calque</h2><button value="cancel" aria-label="Fermer">×</button></header><label>Type<select id="layer-type"><option value="pixel">Calque pixel</option><option value="animation">Calque d’animation</option><option value="symbol">Calque symbole</option></select></label><label>Opacité <output id="layer-opacity-value">100 %</output><input id="layer-opacity" type="range" min="0" max="100" value="100"></label><label>Mode de fusion<select id="layer-blend"><option value="source-over">Normal</option><option value="multiply">Multiplier</option><option value="screen">Écran</option><option value="overlay">Superposition</option><option value="darken">Obscurcir</option><option value="lighten">Éclaircir</option><option value="lighter">Ajouter</option></select></label><label class="property-check"><input id="layer-muted" type="checkbox"> Muet</label><label class="property-check"><input id="layer-locked" type="checkbox"> Verrouillé</label><label class="property-check"><input id="onion-skin-layer" type="checkbox" checked> Pelure d’oignon</label><label class="property-check"><input id="symbol-own-fps" type="checkbox"> Cadence propre au symbole</label><label>Cadence du symbole<input id="symbol-fps" type="number" min="1" max="60" value="24"></label><label>Boucle du symbole<select id="symbol-loop"><option value="normal">Normale</option><option value="once">Une fois</option><option value="pingpong">Ping-pong</option></select></label><button class="desk-property-save" value="default">Terminé</button></form></dialog>
       <dialog class="desk-markers-dialog" id="desk-markers-dialog" aria-labelledby="desk-markers-title"><form method="dialog"><header><h2 id="desk-markers-title">Marqueurs</h2><button value="cancel" aria-label="Fermer">×</button></header><label>Rechercher un marqueur<input id="marker-search" type="search" placeholder="Rechercher"></label><div id="marker-list"></div><div class="marker-dialog-actions"><button type="button" id="marker-add">Ajouter à l’image actuelle</button><button class="desk-property-save" value="default">Fermer</button></div></form></dialog>
       <dialog class="desk-symbols-dialog" id="desk-symbols-dialog" aria-labelledby="desk-symbols-title"><form method="dialog"><header><h2 id="desk-symbols-title">Symboles</h2><button value="cancel" aria-label="Fermer">×</button></header><div id="symbol-list"></div><div class="marker-dialog-actions"><button type="button" id="symbol-create">Créer depuis le calque actif</button><button class="desk-property-save" value="default">Fermer</button></div></form></dialog>
@@ -688,24 +777,108 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   let importedAudio = null;
   let importedTexture = null;
 
+  function selectAddonTab(name) {
+    doc.querySelectorAll('[data-addon-tab]').forEach(button => {
+      button.setAttribute('aria-selected', String(button.dataset.addonTab === name));
+    });
+    doc.querySelectorAll('[data-addon-panel]').forEach(panel => {
+      panel.hidden = panel.dataset.addonPanel !== name;
+    });
+    doc.querySelector('#addon-creator-catalog').hidden = false;
+    doc.querySelector('#addon-creator-form').hidden = true;
+  }
+  doc.querySelectorAll('[data-addon-tab]').forEach(button => {
+    button.addEventListener('click', () => selectAddonTab(button.dataset.addonTab));
+  });
+  doc.querySelectorAll('[data-addon-new]').forEach(button => {
+    button.addEventListener('click', () => {
+      addonForm.reset();
+      addonAudioInput.value = '';
+      delete addonId.dataset.edited;
+      delete doc.querySelector('#recipe-result').dataset.edited;
+      importedAudio = null;
+      importedTexture = null;
+      updateAddonKind();
+      selectAddonTab('creator');
+      doc.querySelector('#addon-creator-catalog').hidden = true;
+      doc.querySelector('#addon-creator-form').hidden = false;
+      doc.querySelector('#addon-type-picker').hidden = false;
+      doc.querySelector('#addon-editor').hidden = true;
+      doc.querySelector('#addon-type-search').value = '';
+      filterAddonChoices('');
+      doc.querySelector('#addon-type-search').focus();
+    });
+  });
+  doc.querySelector('#addon-back-to-catalog').addEventListener('click', () => {
+    selectAddonTab('creator');
+    doc.querySelector('#addon-type-picker').hidden = false;
+    doc.querySelector('#addon-editor').hidden = true;
+  });
+  const addonTypeSearch = doc.querySelector('#addon-type-search');
+  function filterAddonChoices(query) {
+    const normalizedQuery = query.trim().toLowerCase();
+    let visibleCount = 0;
+    doc.querySelectorAll('[data-addon-choice]').forEach(button => {
+      const visible = button.textContent.toLowerCase().includes(normalizedQuery);
+      button.hidden = !visible;
+      if (visible) visibleCount += 1;
+    });
+    doc.querySelector('#addon-type-empty').hidden = visibleCount > 0;
+  }
+  addonTypeSearch.addEventListener('input', () => filterAddonChoices(addonTypeSearch.value));
+  doc.querySelectorAll('[data-addon-choice]').forEach(button => {
+    button.addEventListener('click', () => {
+      addonKind.value = button.dataset.addonChoice;
+      updateAddonKind();
+      doc.querySelector('#addon-type-picker').hidden = true;
+      doc.querySelector('#addon-editor').hidden = false;
+      addonName.focus();
+    });
+  });
+  doc.querySelectorAll('.addon-sort-button').forEach(button => {
+    button.addEventListener('click', () => {
+      const descending = button.getAttribute('aria-pressed') !== 'true';
+      button.setAttribute('aria-pressed', String(descending));
+      button.textContent = descending ? '▣↓' : '▣↑';
+      button.title = descending ? 'Plus récent en premier' : 'Plus ancien en premier';
+    });
+  });
+
   function updateAddonKind() {
     const kind = addonKind.value;
+    const itemTypes = ['item'];
     doc.querySelectorAll('.addon-kind-panel').forEach(panel => {
-      const visible = panel.dataset.addonKind === kind || (panel.hasAttribute('data-addon-texture') && kind !== 'recipe');
+      const panelKind = panel.dataset.addonKind;
+      const visible = panelKind === kind
+        || (panelKind === 'item' && itemTypes.includes(kind))
+        || (panel.hasAttribute('data-addon-texture') && !['recipe', 'script', 'command', 'dimension'].includes(kind));
       panel.hidden = !visible;
       panel.querySelectorAll('input,select,textarea').forEach(input => { input.disabled = !visible; });
     });
     addonId.value = addonId.value.split(':').pop();
-    doc.querySelector('#addon-texture-help').textContent = kind === 'block' || kind === 'entity'
+    const labels = {
+      item: ['Custom Item', 'Objet Bedrock avec texture personnalisée.'],
+      weapon: ['Custom Weapon', 'Objet équipé en main avec dégâts et durabilité.'],
+      block: ['Custom Block', 'Bloc cubique destructible avec texture personnalisée.'],
+      'model-block': ['Custom Model Block', 'Bloc avec géométrie cubique personnalisée; les modèles complexes requièrent un outil 3D.'],
+      entity: ['Custom Entity', 'Créature passive avec œuf d’apparition et modèle cubique.'],
+      projectile: ['Custom Projectile', 'Objet lanceable associé à une entité projectile simple.'],
+      'menu-group': ['Custom Menu Group', 'Objet ajouté à un groupe du menu créatif.'],
+      script: ['Script', 'Module JavaScript Bedrock exporté avec un exemple de script.'],
+      command: ['Custom Command', 'Script déclenché par /scriptevent; Bedrock ne permet pas d’enregistrer une commande arbitraire.'],
+      dimension: ['Custom Dimension', 'Modèle de dimension expérimental; validez sa compatibilité dans votre version Bedrock.'],
+      recipe: ['Recipe', 'Recette Bedrock avec forme précise ou sans forme.'],
+      'music-disc': ['Music Disc', 'Disque musical avec audio OGG fourni.'],
+      food: ['Food Item', 'Objet consommable avec restauration de faim.'],
+      armor: ['Armor', 'Objet portable avec emplacement et durabilité.']
+    };
+    const [title, help] = labels[kind];
+    doc.querySelector('#addon-editor-title').textContent = `Créer : ${title}`;
+    doc.querySelector('#addon-editor-help').textContent = help;
+    doc.querySelector('#addon-texture-help').textContent = ['block', 'model-block', 'entity'].includes(kind)
       ? 'La texture sera appliquée au bloc ou au modèle cubique.'
       : 'La texture sera convertie en PNG 16 × 16.';
-    addonStatus.textContent = {
-      item: 'Un objet personnalisé avec texture sera exporté.',
-      block: 'Un bloc cubique destructible et sa texture seront exportés.',
-      entity: 'Une créature passive, son œuf et son modèle cubique seront exportés.',
-      recipe: 'Une recette Bedrock sera ajoutée au pack de comportement.',
-      'music-disc': 'Un objet musical et le fichier OGG fourni seront exportés.'
-    }[kind];
+    addonStatus.textContent = help;
     drawGem();
   }
 
@@ -828,40 +1001,117 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const namespaceId = `hefcreative:${contentId}`;
     const resourceFiles = [];
     const behaviorFiles = [];
+    const scriptFiles = [];
     let itemAtlas;
-    if (kind === 'item') {
+    const itemKinds = ['item', 'weapon', 'projectile', 'menu-group', 'food', 'armor'];
+    if (itemKinds.includes(kind)) {
+      const groupId = `itemGroup.name.hefcreative_${contentId}`;
+      const itemComponents = {
+        'minecraft:display_name': { value: displayName },
+        'minecraft:icon': contentId,
+        'minecraft:max_stack_size': kind === 'food' ? 64 : kind === 'item' ? Number(doc.querySelector('#addon-stack').value) : 1,
+        'minecraft:hand_equipped': kind === 'weapon' || kind === 'projectile' || (kind === 'item' && doc.querySelector('#addon-hand').checked)
+      };
+      const menuCategory = { category: kind === 'armor' ? 'equipment' : 'items' };
+      if (kind === 'menu-group') {
+        menuCategory.group = groupId;
+        resourceFiles.push(
+          { name: 'texts/languages.json', content: jsonFile(['en_US']) },
+          { name: 'texts/en_US.lang', content: `${groupId}=${doc.querySelector('#addon-group-name').value.replace(/[\r\n=]/g, ' ')}\n` }
+        );
+      }
+      if (kind === 'weapon') {
+        itemComponents['minecraft:damage'] = { value: Number(doc.querySelector('#addon-weapon-damage').value) };
+        itemComponents['minecraft:durability'] = { max_durability: Number(doc.querySelector('#addon-weapon-durability').value) };
+      }
+      if (kind === 'projectile') {
+        const projectileId = `${namespaceId}_projectile`;
+        itemComponents['minecraft:throwable'] = { do_swing_animation: true, launch_power_scale: 1, max_draw_duration: 0, scale_power_by_draw_duration: false };
+        itemComponents['minecraft:projectile'] = { projectile_entity: projectileId };
+        const projectileEntity = {
+          format_version: '1.20.80',
+          'minecraft:entity': {
+            description: { identifier: projectileId, is_spawnable: false, is_summonable: true, is_experimental: false },
+            components: {
+              'minecraft:type_family': { family: ['hefcreative', 'projectile'] },
+              'minecraft:collision_box': { width: 0.25, height: 0.25 },
+              'minecraft:physics': {},
+              'minecraft:projectile': {
+                on_hit: { impact_damage: { damage: Number(doc.querySelector('#addon-projectile-damage').value), knockback: true } },
+                power: 1.5, gravity: 0.05, uncertainty_base: 0, anchor: 1
+              },
+              'minecraft:despawn': { despawn_from_distance: {} }
+            }
+          }
+        };
+        behaviorFiles.push({ name: `entities/${contentId}_projectile.json`, content: jsonFile(projectileEntity) });
+        const projectileIdentifier = `${namespaceId}_projectile`;
+        const projectileGeometryId = `geometry.${contentId}_projectile`;
+        resourceFiles.push(
+          { name: `entity/${contentId}_projectile.entity.json`, content: jsonFile({
+            format_version: '1.10.0',
+            'minecraft:client_entity': {
+              description: {
+                identifier: projectileIdentifier,
+                materials: { default: 'entity_alphatest' },
+                textures: { default: `textures/entity/${contentId}_projectile` },
+                geometry: { default: projectileGeometryId },
+                render_controllers: [`controller.render.hefcreative.${contentId}_projectile`]
+              }
+            }
+          }) },
+          { name: `models/entity/${contentId}_projectile.geo.json`, content: jsonFile({
+            format_version: '1.12.0',
+            'minecraft:geometry': [{
+              description: { identifier: projectileGeometryId, texture_width: 16, texture_height: 16, visible_bounds_width: 1, visible_bounds_height: 1, visible_bounds_offset: [0, 0.5, 0] },
+              bones: [{ name: 'root', pivot: [0, 0, 0], cubes: [{ origin: [-2, -2, -2], size: [4, 4, 4], uv: [0, 0] }] }]
+            }]
+          }) },
+          { name: `textures/entity/${contentId}_projectile.png`, content: textureBytes },
+          { name: `render_controllers/${contentId}_projectile.render_controllers.json`, content: jsonFile({
+            format_version: '1.8.0',
+            render_controllers: { [`controller.render.hefcreative.${contentId}_projectile`]: { geometry: 'Geometry.default', materials: [{ '*': 'Material.default' }], textures: ['Texture.default'] } }
+          }) }
+        );
+      }
+      if (kind === 'food') {
+        itemComponents['minecraft:food'] = { nutrition: Number(doc.querySelector('#addon-food-hunger').value), saturation_modifier: 'normal', can_always_eat: doc.querySelector('#addon-food-always').checked };
+        itemComponents['minecraft:use_animation'] = 'eat';
+        itemComponents['minecraft:use_duration'] = 1.6;
+      }
+      if (kind === 'armor') {
+        itemComponents['minecraft:wearable'] = { slot: doc.querySelector('#addon-armor-slot').value };
+        itemComponents['minecraft:durability'] = { max_durability: Number(doc.querySelector('#addon-armor-durability').value) };
+      }
       const item = {
         format_version: '1.20.80',
         'minecraft:item': {
-          description: { identifier: namespaceId, menu_category: { category: 'items' } },
-          components: {
-            'minecraft:display_name': { value: displayName },
-            'minecraft:icon': contentId,
-            'minecraft:max_stack_size': Number(doc.querySelector('#addon-stack').value),
-            'minecraft:hand_equipped': doc.querySelector('#addon-hand').checked
-          }
+          description: { identifier: namespaceId, menu_category: menuCategory },
+          components: itemComponents
         }
       };
       behaviorFiles.push({ name: `items/${contentId}.json`, content: jsonFile(item) });
       itemAtlas = { [contentId]: { textures: `textures/items/${contentId}` } };
       resourceFiles.push({ name: `textures/items/${contentId}.png`, content: textureBytes });
-    } else if (kind === 'block') {
-      const hardness = Number(doc.querySelector('#addon-hardness').value);
+    } else if (kind === 'block' || kind === 'model-block') {
+      const hardness = Number(doc.querySelector(kind === 'model-block' ? '#addon-hardness-model' : '#addon-hardness').value);
       const localizedName = displayName.replace(/[\r\n]+/g, ' ');
+      const blockComponents = {
+        'minecraft:material_instances': { '*': { texture: contentId, render_method: 'opaque' } },
+        'minecraft:destructible_by_mining': { seconds_to_destroy: hardness },
+        'minecraft:destructible_by_explosion': { explosion_resistance: hardness * 3 }
+      };
+      if (kind === 'model-block') blockComponents['minecraft:geometry'] = `geometry.${contentId}`;
       const block = {
         format_version: '1.20.80',
         'minecraft:block': {
           description: { identifier: namespaceId, menu_category: { category: 'construction' } },
-          components: {
-            'minecraft:material_instances': {
-              '*': { texture: contentId, render_method: 'opaque' }
-            },
-            'minecraft:destructible_by_mining': { seconds_to_destroy: hardness },
-            'minecraft:destructible_by_explosion': { explosion_resistance: hardness * 3 }
-          }
+          components: blockComponents
         }
       };
       behaviorFiles.push({ name: `blocks/${contentId}.json`, content: jsonFile(block) });
+      const blockResource = { textures: contentId, sound: 'stone' };
+      if (kind === 'model-block') blockResource.geometry = `geometry.${contentId}`;
       resourceFiles.push(
         { name: `textures/blocks/${contentId}.png`, content: textureBytes },
         { name: 'textures/terrain_texture.json', content: jsonFile({
@@ -871,10 +1121,20 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           num_mip_levels: 4,
           texture_data: { [contentId]: { textures: `textures/blocks/${contentId}` } }
         }) },
-        { name: 'blocks.json', content: jsonFile({ [namespaceId]: { textures: contentId, sound: 'stone' } }) },
+        { name: 'blocks.json', content: jsonFile({ [namespaceId]: blockResource }) },
         { name: 'texts/languages.json', content: jsonFile(['en_US']) },
         { name: 'texts/en_US.lang', content: `tile.${namespaceId}.name=${localizedName}\n` }
       );
+      if (kind === 'model-block') {
+        const geometry = {
+          format_version: '1.12.0',
+          'minecraft:geometry': [{
+            description: { identifier: `geometry.${contentId}`, texture_width: 16, texture_height: 16, visible_bounds_width: 1, visible_bounds_height: 1, visible_bounds_offset: [0, 0.5, 0] },
+            bones: [{ name: 'block', pivot: [0, 0, 0], cubes: [{ origin: [-8, 0, -8], size: [16, 16, 16], uv: [0, 0] }] }]
+          }]
+        };
+        resourceFiles.push({ name: `models/blocks/${contentId}.geo.json`, content: jsonFile(geometry) });
+      }
     } else if (kind === 'entity') {
       const localizedName = displayName.replace(/[\r\n]+/g, ' ');
       const entity = {
@@ -939,6 +1199,21 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         { name: 'texts/languages.json', content: jsonFile(['en_US']) },
         { name: 'texts/en_US.lang', content: `entity.${namespaceId}.name=${localizedName}\nitem.spawn_egg.entity.${namespaceId}.name=Spawn ${localizedName}\n` }
       );
+    } else if (kind === 'script' || kind === 'command') {
+      const responseMessage = doc.querySelector('#addon-command-message').value;
+      const scriptSource = kind === 'command'
+        ? `import { world } from "@minecraft/server";\n\nworld.afterEvents.scriptEventReceive.subscribe((event) => {\n  if (event.id !== ${JSON.stringify(namespaceId)}) return;\n  world.sendMessage(${JSON.stringify(responseMessage)});\n});\n`
+        : doc.querySelector('#addon-script-code').value;
+      scriptFiles.push({ name: 'scripts/main.js', content: scriptSource });
+    } else if (kind === 'dimension') {
+      const dimension = {
+        format_version: '1.20.0',
+        'minecraft:dimension': {
+          description: { identifier: namespaceId },
+          components: { 'minecraft:generator': { type: doc.querySelector('#addon-dimension-generator').value } }
+        }
+      };
+      behaviorFiles.push({ name: `dimensions/${contentId}.json`, content: jsonFile(dimension) });
     } else if (kind === 'recipe') {
       const recipe = recipeIngredientIds();
       const result = doc.querySelector('#recipe-result').value.trim();
@@ -986,15 +1261,22 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       header: { name: `${displayName} — Ressources`, description: `Ressources pour ${displayName}`, uuid: resourceUuid, version, min_engine_version: [1, 20, 80] },
       modules: [{ description: 'Textures et ressources audio', type: 'resources', uuid: uuid(), version }]
     };
+    const behaviorModules = [{ description: 'Définitions Bedrock', type: 'data', uuid: uuid(), version }];
+    const behaviorDependencies = [{ uuid: resourceUuid, version }];
+    if (scriptFiles.length) {
+      behaviorModules.push({ description: 'Scripts Bedrock', type: 'script', language: 'javascript', uuid: uuid(), version, entry: 'scripts/main.js' });
+      behaviorDependencies.push({ module_name: '@minecraft/server', version: '1.10.0' });
+    }
     const behaviorPack = {
       format_version: 2,
       header: { name: `${displayName} — Comportement`, description: `Contenu Bedrock créé avec HEF Creative`, uuid: behaviorUuid, version, min_engine_version: [1, 20, 80] },
-      modules: [{ description: 'Définitions Bedrock', type: 'data', uuid: uuid(), version }],
-      dependencies: [{ uuid: resourceUuid, version }]
+      modules: behaviorModules,
+      dependencies: behaviorDependencies
     };
     const behaviorPackFiles = [
       { name: 'manifest.json', content: jsonFile(behaviorPack) },
-      ...behaviorFiles
+      ...behaviorFiles,
+      ...scriptFiles
     ];
     const resourcePackFiles = [
       { name: 'manifest.json', content: jsonFile(resourcePack) },
@@ -1006,10 +1288,16 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       render_controllers: { [`controller.render.hefcreative.${contentId}`]: { geometry: 'Geometry.default', materials: [{ '*': 'Material.default' }], textures: ['Texture.default'] } }
     }) });
     const baseName = slugify(displayName);
+    const limitations = [];
+    if (kind === 'command') limitations.push(`Commande personnalisée : Bedrock ne permet pas d’enregistrer une nouvelle commande vanilla. Dans le jeu, utilisez /scriptevent ${namespaceId}.`);
+    if (kind === 'dimension') limitations.push('Dimension expérimentale : vérifiez la définition et activez les options expérimentales requises pour votre version Bedrock avant de l’utiliser.');
+    if (kind === 'model-block') limitations.push('Modèle de bloc : le pack fournit une géométrie cubique de départ. Les géométries avancées doivent être créées et validées dans un éditeur de modèles Bedrock.');
+    if (kind === 'armor') limitations.push('Armure : l’objet portable est défini, mais le modèle visuel porté n’est pas généré; ajoutez vos textures et géométries d’armure.');
+    if (kind === 'script' || kind === 'command') limitations.push('Script : activez le pack de comportement et vérifiez la version de @minecraft/server attendue par votre version de Minecraft.');
     return createZip([
       { name: `${baseName}_BP.mcpack`, content: createZip(behaviorPackFiles) },
       { name: `${baseName}_RP.mcpack`, content: createZip(resourcePackFiles) },
-      { name: 'README.txt', content: `Contenu Minecraft Bedrock : ${displayName} (${kind}). Ouvrez ce fichier .mcaddon avec Minecraft Bedrock, puis activez les packs de comportement et de ressources dans votre monde.` }
+      { name: 'README.txt', content: `Contenu Minecraft Bedrock : ${displayName} (${kind}). Ouvrez ce fichier .mcaddon avec Minecraft Bedrock, puis activez les packs de comportement et de ressources dans votre monde.${limitations.length ? `\n\nÀ vérifier :\n- ${limitations.join('\n- ')}` : ''}` }
     ]);
   }
   addonForm.addEventListener('submit', async event => {
@@ -1041,7 +1329,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       });
       const baseName = slugify(displayName);
       downloadFile(archive, `${baseName}.mcaddon`, 'application/zip');
-      status.textContent = `${displayName}.mcaddon est prêt. Ouvrez-le avec Minecraft Bedrock pour importer ${kind === 'music-disc' ? 'votre disque musical' : kind === 'entity' ? 'votre entité' : kind === 'recipe' ? 'votre recette' : kind === 'block' ? 'votre bloc' : 'votre objet'}.`;
+      const typeLabel = doc.querySelector('#addon-kind').selectedOptions[0].textContent;
+      status.textContent = `${displayName}.mcaddon est prêt. Ouvrez-le avec Minecraft Bedrock pour importer « ${typeLabel} ». Consultez README.txt pour les limites de compatibilité et les instructions.`;
     } catch (error) {
       console.error(error);
       status.textContent = `L’export a échoué : ${error.message || 'vérifiez que le navigateur autorise les téléchargements et réessayez.'}`;
@@ -1074,6 +1363,14 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   const layerList = doc.querySelector('#layer-list');
   const layerTracks = doc.querySelector('#layer-tracks');
   const timelineViewport = doc.querySelector('.track-viewport');
+  const magneticButton = doc.createElement('button');
+  magneticButton.type = 'button';
+  magneticButton.id = 'magnetic-mode';
+  magneticButton.className = 'magnetic-mode-button';
+  magneticButton.textContent = '🧲 Magnétique';
+  magneticButton.title = 'Aimantation des déplacements et des cellules de timeline';
+  magneticButton.setAttribute('aria-label', magneticButton.title);
+  doc.querySelector('#open-markers').insertAdjacentElement('afterend', magneticButton);
   const layerCell = () => Array(20).fill(null);
   let frameCount = 20;
   let layers = [
@@ -1084,6 +1381,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   let activeLayerId = 'layer-2';
   let undoStacks = Array.from({ length: frameCount }, () => []);
   let undoMotionStacks = Array.from({ length: frameCount }, () => []);
+  let redoStacks = Array.from({ length: frameCount }, () => []);
+  let redoMotionStacks = Array.from({ length: frameCount }, () => []);
   let activeFrame = 0;
   let drawing = false;
   let activeTool = 'brush';
@@ -1092,6 +1391,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   let pathBase = null;
   let motionTweenEnabled = true;
   let motionEasing = 'linear';
+  let magneticMode = true;
+  let timelineDrag = null;
   let markers = [];
   let symbols = [];
   let layerClipboard = null;
@@ -1100,6 +1401,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   let onionSkinEnabled = true;
   let selectionRect = null;
   let selectionStart = null;
+  let selectionMove = null;
+  let contextMenuScope = 'scene';
+  let soloLayerId = null;
+  let soloVisibilityBackup = null;
   let playbackTimer = null;
   let playbackIndex = 0;
   let recording = false;
@@ -1120,6 +1425,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       frameCount,
       motionTweenEnabled,
       motionEasing,
+      magneticMode,
       onionSkinEnabled,
       markers: markers.map(marker => ({ ...marker })),
       symbols: symbols.map(symbol => ({
@@ -1135,16 +1441,22 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         visible: layer.visible,
         locked: layer.locked,
         muted: layer.muted,
+        onionSkin: layer.onionSkin,
+        lockTransparency: layer.lockTransparency,
+        fillReference: layer.fillReference,
+        maskEnabled: layer.maskEnabled,
         opacity: layer.opacity,
         blendMode: layer.blendMode,
         type: layer.type,
-        onionSkin: layer.onionSkin,
         ownFps: layer.ownFps,
         fps: layer.fps,
         loopMode: layer.loopMode,
         keyframes: layer.keyframes.slice(0, frameCount),
         motion: layer.motion.slice(0, frameCount).map(pose => ({ ...pose })),
-        frames: layer.frames.slice(0, frameCount).map(frame => frame ? new Uint8ClampedArray(frame.data) : null)
+        frames: layer.frames.slice(0, frameCount).map(frame => frame ? new Uint8ClampedArray(frame.data) : null),
+        maskFrames: layer.maskFrames?.slice(0, frameCount).map(frame => frame
+          ? new Uint8ClampedArray(frame instanceof Uint8ClampedArray ? frame : frame.data)
+          : null) || null
       })),
       preview
     };
@@ -1191,11 +1503,17 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       ];
       undoStacks = [[]];
       undoMotionStacks = [[]];
+      redoStacks = [[]];
+      redoMotionStacks = [[]];
       motionTweenEnabled = true;
       motionEasing = 'linear';
+      magneticMode = true;
       onionSkinEnabled = true;
       onionToggle.checked = true;
       doc.querySelector('#motion-easing').value = motionEasing;
+      updateMagneticButton();
+      soloLayerId = null;
+      soloVisibilityBackup = null;
       markers = [];
       symbols = [];
       doc.querySelector('#motion-tween').checked = true;
@@ -1238,6 +1556,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       activeLayerId: project.activeLayerId,
       motionTweenEnabled: project.motionTweenEnabled !== false,
       motionEasing: project.motionEasing || 'linear',
+      magneticMode: project.magneticMode !== false,
       onionSkinEnabled: project.onionSkinEnabled !== false,
       markers: project.markers || [],
       symbols: (project.symbols || []).map(symbol => ({
@@ -1252,6 +1571,9 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         visible: layer.visible,
         locked: layer.locked,
         muted: layer.muted,
+        lockTransparency: layer.lockTransparency,
+        fillReference: layer.fillReference,
+        maskEnabled: layer.maskEnabled,
         opacity: layer.opacity,
         blendMode: layer.blendMode,
         type: layer.type,
@@ -1261,7 +1583,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         loopMode: layer.loopMode,
         keyframes: layer.keyframes,
         motion: layer.motion,
-        frames: layer.frames.map(frame => frame ? encodePixels(frame instanceof Uint8ClampedArray ? frame : frame.data) : null)
+        frames: layer.frames.map(frame => frame ? encodePixels(frame instanceof Uint8ClampedArray ? frame : frame.data) : null),
+        maskFrames: layer.maskFrames?.map(frame => frame ? encodePixels(frame instanceof Uint8ClampedArray ? frame : frame.data) : null) || null
       }))
     };
     downloadFile(JSON.stringify(portable), `${slugify(project.name)}.hefclip`, 'application/json');
@@ -1281,15 +1604,19 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           visible: layer.visible !== false,
           locked: Boolean(layer.locked),
           muted: Boolean(layer.muted),
+          onionSkin: layer.onionSkin !== false,
+          lockTransparency: Boolean(layer.lockTransparency),
+          fillReference: Boolean(layer.fillReference),
+          maskEnabled: Boolean(layer.maskEnabled),
           opacity: Number.isFinite(Number(layer.opacity)) ? Math.min(1, Math.max(0, Number(layer.opacity))) : 1,
           blendMode: ['source-over', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'lighter'].includes(layer.blendMode) ? layer.blendMode : 'source-over',
           type: ['pixel', 'animation', 'symbol'].includes(layer.type) ? layer.type : 'pixel',
-          onionSkin: layer.onionSkin !== false,
           ownFps: Boolean(layer.ownFps),
           fps: Math.max(1, Math.min(60, Number(layer.fps) || 24)),
           loopMode: ['normal', 'once', 'pingpong'].includes(layer.loopMode) ? layer.loopMode : 'normal',
           keyframes: Array.from({ length: count }, (_, index) => Array.isArray(layer.keyframes) ? Boolean(layer.keyframes[index]) : hasPixels(frames[index])),
           motion: Array.from({ length: count }, (_, index) => normalizePose(layer.motion?.[index])),
+          maskFrames: Array.isArray(layer.maskFrames) ? Array.from({ length: count }, (_, index) => layer.maskFrames[index] ? decodePixels(layer.maskFrames[index]) : null) : null,
           frames
         };
       });
@@ -1299,6 +1626,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         fps: Number(portable.fps) || 24, frameCount: count,
         motionTweenEnabled: portable.motionTweenEnabled !== false,
         motionEasing: ['linear', 'hold', 'easeIn', 'easeOut', 'easeInOut', 'sine', 'circular', 'back', 'elastic', 'bounce', 'exponential', 'cubic', 'quartic', 'quintic'].includes(portable.motionEasing) ? portable.motionEasing : 'linear',
+        magneticMode: portable.magneticMode !== false,
         onionSkinEnabled: portable.onionSkinEnabled !== false,
         markers: Array.isArray(portable.markers) ? portable.markers.filter(marker => Number.isInteger(marker.frame) && marker.frame >= 0 && marker.frame < count).map(marker => ({ frame: marker.frame, name: String(marker.name || `Marqueur ${marker.frame + 1}`) })) : [],
         symbols: Array.isArray(portable.symbols) ? portable.symbols.slice(0, 50).filter(symbol => symbol && Array.isArray(symbol.frames) && symbol.frames.length).map(symbol => ({
@@ -1332,15 +1660,25 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       visible: layer.visible,
       locked: layer.locked,
       muted: Boolean(layer.muted),
+      onionSkin: layer.onionSkin !== false,
+      lockTransparency: Boolean(layer.lockTransparency),
+      fillReference: Boolean(layer.fillReference),
+      maskEnabled: Boolean(layer.maskEnabled),
       opacity: Number.isFinite(Number(layer.opacity)) ? Math.min(1, Math.max(0, Number(layer.opacity))) : 1,
       blendMode: ['source-over', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'lighter'].includes(layer.blendMode) ? layer.blendMode : 'source-over',
       type: ['pixel', 'animation', 'symbol'].includes(layer.type) ? layer.type : 'pixel',
-      onionSkin: layer.onionSkin !== false,
       ownFps: Boolean(layer.ownFps),
       fps: Math.max(1, Math.min(60, Number(layer.fps) || 24)),
       loopMode: ['normal', 'once', 'pingpong'].includes(layer.loopMode) ? layer.loopMode : 'normal',
       keyframes: Array.from({ length: frameCount }, (_, index) => Array.isArray(layer.keyframes) ? Boolean(layer.keyframes[index]) : hasPixels(layer.frames[index])),
       motion: Array.from({ length: frameCount }, (_, index) => normalizePose(layer.motion?.[index])),
+      maskFrames: Array.isArray(layer.maskFrames) ? Array.from({ length: frameCount }, (_, index) => {
+        const pixels = layer.maskFrames[index];
+        if (!pixels) return null;
+        const image = context.createImageData(frameWidth, frameHeight);
+        image.data.set(pixels instanceof Uint8ClampedArray ? pixels : pixels.data);
+        return image;
+      }) : null,
       frames: Array.from({ length: frameCount }, (_, index) => {
         const pixels = layer.frames[index];
         if (!pixels) return null;
@@ -1349,6 +1687,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         return data;
       })
     }));
+    soloLayerId = null;
+    soloVisibilityBackup = null;
     currentProjectId = project.id;
     currentProjectName = project.name;
     currentProjectCreatedAt = project.createdAt;
@@ -1356,8 +1696,12 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     activeFrame = 0;
     undoStacks = Array.from({ length: frameCount }, () => []);
     undoMotionStacks = Array.from({ length: frameCount }, () => []);
+    redoStacks = Array.from({ length: frameCount }, () => []);
+    redoMotionStacks = Array.from({ length: frameCount }, () => []);
     motionTweenEnabled = project.motionTweenEnabled !== false;
     motionEasing = project.motionEasing || 'linear';
+    magneticMode = project.magneticMode !== false;
+    updateMagneticButton();
     onionSkinEnabled = project.onionSkinEnabled !== false;
     onionToggle.checked = onionSkinEnabled;
     doc.querySelector('#motion-easing').value = motionEasing;
@@ -1460,6 +1804,16 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       ? layer.frames[previous]
       : layer.frames[index];
   }
+  function applyLayerMask(layer, imageData, index) {
+    const mask = layer.maskEnabled && layer.maskFrames?.[index];
+    if (!mask || !imageData) return imageData;
+    const output = cloneImageData(imageData);
+    const maskData = mask instanceof Uint8ClampedArray ? mask : mask.data;
+    for (let pixel = 0, offset = 0; offset < output.data.length; pixel += 1, offset += 4) {
+      output.data[offset + 3] = Math.round(output.data[offset + 3] * maskData[offset + 3] / 255);
+    }
+    return output;
+  }
   function hasPixels(imageData) {
     if (!imageData) return false;
     const pixels = imageData instanceof Uint8ClampedArray ? imageData : imageData.data;
@@ -1500,16 +1854,21 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     }
     if (onionSkin && onionSkinEnabled && index > 0) {
       layers.filter(layer => layer.visible && !layer.muted && layer.onionSkin !== false).forEach(layer => {
-        putLayer(target, displayedLayerFrame(layer, index - 1), 0.16, motionPose(layer, index - 1), layer);
+        putLayer(target, applyLayerMask(layer, displayedLayerFrame(layer, index - 1), index - 1), 0.16, motionPose(layer, index - 1), layer);
       });
     }
-    layers.filter(layer => layer.visible && !layer.muted).forEach(layer => {
+    layers.filter(layer => layer.visible && !layer.muted && (!soloLayerId || soloLayerId === layer.id)).forEach(layer => {
       const data = layer.id === activeLayerId && index === activeFrame
         ? draftContext.getImageData(0, 0, frameWidth, frameHeight)
         : displayedLayerFrame(layer, index);
-      putLayer(target, data, 1, motionPose(layer, index), layer);
+      putLayer(target, applyLayerMask(layer, data, index), 1, motionPose(layer, index), layer);
     });
     if (target === context && onionSkin && selectionRect) {
+      if (selectionMove) {
+        ghostContext.clearRect(0, 0, frameWidth, frameHeight);
+        ghostContext.putImageData(selectionMove.pixels, selectionRect.x, selectionRect.y);
+        target.drawImage(ghostCanvas, 0, 0);
+      }
       target.save();
       target.setLineDash([5, 4]);
       target.strokeStyle = '#1769ff';
@@ -1533,6 +1892,122 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     if (!layer || layer.locked) return;
     if (!layer.keyframes[activeFrame]) layer.motion[activeFrame] = motionPose(layer, activeFrame);
     layer.keyframes[activeFrame] = true;
+  }
+  function updateMagneticButton() {
+    magneticButton.setAttribute('aria-pressed', String(magneticMode));
+    magneticButton.classList.toggle('is-active', magneticMode);
+    magneticButton.textContent = '🧲 Aimant';
+    magneticButton.title = magneticMode
+      ? 'Mode magnétique activé : grille 10 px, images clés et marqueurs'
+      : 'Mode magnétique désactivé';
+    magneticButton.setAttribute('aria-label', magneticButton.title);
+  }
+  function reorderLayer(sourceId, targetId, insertAfter) {
+    if (sourceId === targetId) return;
+    const sourceIndex = layers.findIndex(layer => layer.id === sourceId);
+    if (sourceIndex < 0 || layers[sourceIndex].locked) return;
+    const [moving] = layers.splice(sourceIndex, 1);
+    let targetIndex = layers.findIndex(layer => layer.id === targetId);
+    if (targetIndex < 0) {
+      layers.splice(sourceIndex, 0, moving);
+      return;
+    }
+    if (layers[targetIndex].locked) targetIndex = Math.max(0, targetIndex);
+    const destination = layers[targetIndex].locked ? targetIndex + 1 : targetIndex + (insertAfter ? 1 : 0);
+    layers.splice(destination, 0, moving);
+    refreshTimeline();
+    paintFrame(activeFrame);
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = `Calque « ${moving.name} » déplacé.`;
+  }
+  function moveTimelineCel(sourceId, sourceFrame, targetId, requestedFrame) {
+    const source = layers.find(layer => layer.id === sourceId);
+    const target = layers.find(layer => layer.id === targetId);
+    if (!source || !target || source.locked || target.locked || !source.frames[sourceFrame] && !source.keyframes[sourceFrame]) return;
+    let targetFrame = requestedFrame;
+    if (magneticMode) {
+      const anchors = [
+        ...markers.map(marker => marker.frame),
+        ...target.keyframes.map((isKeyframe, index) => isKeyframe && index !== sourceFrame ? index : -1).filter(index => index >= 0)
+      ];
+      const anchor = anchors
+        .filter(index => index >= 0 && index < frameCount && index !== sourceFrame && Math.abs(index - requestedFrame) <= 1)
+        .sort((a, b) => Math.abs(a - requestedFrame) - Math.abs(b - requestedFrame))[0];
+      if (anchor !== undefined) targetFrame = anchor;
+    }
+    if (source === target && sourceFrame === targetFrame) return;
+    saveActiveFrame();
+    [source.frames[sourceFrame], target.frames[targetFrame]] = [target.frames[targetFrame], source.frames[sourceFrame]];
+    [source.keyframes[sourceFrame], target.keyframes[targetFrame]] = [target.keyframes[targetFrame], source.keyframes[sourceFrame]];
+    [source.motion[sourceFrame], target.motion[targetFrame]] = [target.motion[targetFrame], source.motion[sourceFrame]];
+    if (source.maskFrames || target.maskFrames) {
+      source.maskFrames ||= Array(frameCount).fill(null);
+      target.maskFrames ||= Array(frameCount).fill(null);
+      [source.maskFrames[sourceFrame], target.maskFrames[targetFrame]] = [target.maskFrames[targetFrame], source.maskFrames[sourceFrame]];
+    }
+    activeLayerId = target.id;
+    activeFrame = targetFrame;
+    selectedLayerIds = new Set([target.id]);
+    loadDraft();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = `Dessin déplacé vers ${target.name}, image ${targetFrame + 1}${targetFrame !== requestedFrame ? ' (aimanté)' : ''}.`;
+  }
+  function startLayerDrag(event, layer) {
+    if (layer.locked || event.target.closest('.layer-visibility, .layer-remove')) {
+      event.preventDefault();
+      return;
+    }
+    timelineDrag = { type: 'layer', layerId: layer.id };
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', `layer:${layer.id}`);
+  }
+  function acceptLayerDrop(event, targetLayer) {
+    if (timelineDrag?.type !== 'layer') return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const bounds = event.currentTarget.getBoundingClientRect();
+    reorderLayer(timelineDrag.layerId, targetLayer.id, event.clientY >= bounds.top + bounds.height / 2);
+  }
+  function openContextMenu(event, scope) {
+    event.preventDefault();
+    const menu = doc.querySelector('#desk-action-menu');
+    contextMenuScope = scope;
+    menu.classList.add('is-context-menu');
+    const layerActions = ['menu-select-all-layers', 'menu-copy-layer', 'menu-paste-layer', 'menu-duplicate-layer', 'menu-rename-layer', 'menu-lock-layer', 'menu-toggle-layer-onion', 'menu-focus-layer', 'menu-lock-transparency', 'menu-fill-reference', 'menu-layer-mask', 'menu-layer-properties', 'menu-rasterize-layer', 'menu-merge-down', 'menu-delete-layer'];
+    const drawingActions = ['menu-cut-drawing', 'menu-copy-drawing', 'menu-paste-drawing', 'menu-duplicate-drawing', 'menu-add-drawing', 'menu-split-drawing'];
+    layerActions.forEach(id => { doc.querySelector(`#${id}`).hidden = scope !== 'layer'; });
+    drawingActions.forEach(id => { doc.querySelector(`#${id}`).hidden = scope === 'layer'; });
+    doc.querySelector('#menu-create-symbol').hidden = false;
+    doc.querySelector('#menu-open-symbols').hidden = scope !== 'layer';
+    doc.querySelector('#menu-add-marker').hidden = scope === 'layer';
+    doc.querySelector('#menu-export-video').hidden = true;
+    doc.querySelector('#export-frame').hidden = scope === 'layer';
+    doc.querySelector('#menu-clear-frame').hidden = scope === 'layer';
+    if (scope === 'layer') {
+      const layer = selectedLayer();
+      const toggleLabel = (id, active, onLabel, offLabel) => {
+        const button = doc.querySelector(`#${id}`);
+        button.textContent = active ? onLabel : offLabel;
+      };
+      toggleLabel('menu-lock-layer', Boolean(layer?.locked), '♙ Déverrouiller', '♙ Verrouiller');
+      toggleLabel('menu-toggle-layer-onion', layer?.onionSkin !== false, '◐ Désactiver la pelure d’oignon', '◐ Activer la pelure d’oignon');
+      toggleLabel('menu-focus-layer', soloLayerId === layer?.id, '◎ Quitter le focus', '◎ Focus');
+      toggleLabel('menu-lock-transparency', Boolean(layer?.lockTransparency), '▦ Déverrouiller la transparence', '▦ Verrouiller la transparence');
+      toggleLabel('menu-fill-reference', Boolean(layer?.fillReference), '◈ Retirer la référence de remplissage', '◈ Définir comme référence de remplissage');
+      toggleLabel('menu-layer-mask', Boolean(layer?.maskEnabled), '▧ Désactiver le masque', '▧ Activer le masque');
+      toggleLabel('menu-merge-down', false, '⇩ Fusionner vers le bas', '⇩ Fusionner vers le bas');
+      doc.querySelector('#menu-merge-down').disabled = !layer || layers[layers.findIndex(item => item.id === layer.id) - 1]?.locked !== false;
+      doc.querySelector('#menu-paste-layer').disabled = !layerClipboard;
+    } else {
+      doc.querySelector('#menu-paste-drawing').disabled = !drawingClipboard;
+      doc.querySelector('#menu-paste-layer').disabled = !layerClipboard;
+    }
+    menu.hidden = false;
+    menu.style.left = `${Math.max(8, Math.min(event.clientX, global.innerWidth - 248))}px`;
+    menu.style.top = `${Math.max(8, Math.min(event.clientY, global.innerHeight - 390))}px`;
+    doc.querySelector('#actions-tab').setAttribute('aria-expanded', 'true');
   }
   function refreshTimeline() {
     const cellWidth = Number(doc.querySelector('#timeline-scale').value);
@@ -1560,12 +2035,20 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     layers.forEach(layer => {
       const label = doc.createElement('div');
       label.className = `layer-label${layer.id === activeLayerId ? ' is-active' : ''}${selectedLayerIds.has(layer.id) ? ' is-selected' : ''}`;
+      label.draggable = !layer.locked;
+      label.addEventListener('dragstart', event => startLayerDrag(event, layer));
+      label.addEventListener('dragend', () => { timelineDrag = null; });
+      label.addEventListener('dragover', event => {
+        if (timelineDrag?.type === 'layer') event.preventDefault();
+      });
+      label.addEventListener('drop', event => acceptLayerDrop(event, layer));
       const choose = doc.createElement('button');
       choose.type = 'button';
       choose.className = 'layer-name';
       choose.textContent = layer.name;
       choose.addEventListener('click', event => {
         if (pathBase) cancelPath();
+        selectionRect = null;
         saveActiveFrame();
         if (event.ctrlKey || event.metaKey || event.shiftKey) {
           if (selectedLayerIds.has(layer.id) && selectedLayerIds.size > 1) selectedLayerIds.delete(layer.id);
@@ -1579,16 +2062,14 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       });
       choose.addEventListener('dblclick', () => openLayerProperties(layer));
       label.addEventListener('contextmenu', event => {
-        event.preventDefault();
+        selectionRect = null;
         saveActiveFrame();
         activeLayerId = layer.id;
         selectedLayerIds = new Set([layer.id]);
         loadDraft();
         paintFrame(activeFrame);
         refreshTimeline();
-        const menu = doc.querySelector('#desk-action-menu');
-        menu.hidden = false;
-        doc.querySelector('#actions-tab').setAttribute('aria-expanded', 'true');
+        openContextMenu(event, 'layer');
       });
       const visibility = doc.createElement('button');
       visibility.type = 'button';
@@ -1640,6 +2121,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
 
       const track = doc.createElement('div');
       track.className = `layer-track${layer.locked ? ' background-track' : ''}`;
+      track.dataset.layerId = layer.id;
+      track.addEventListener('dragover', event => {
+        if (timelineDrag?.type === 'layer') event.preventDefault();
+      });
+      track.addEventListener('drop', event => acceptLayerDrop(event, layer));
       track.style.gridTemplateColumns = columns;
       for (let index = 0; index < frameCount; index += 1) {
         const cell = doc.createElement('button');
@@ -1647,6 +2133,28 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         cell.className = `timeline-cell${index === activeFrame ? ' is-current' : ''}${hasPixels(layer.frames[index]) ? ' has-drawing' : ''}${layer.keyframes[index] ? ' is-keyframe' : ''}`;
         cell.setAttribute('aria-label', `${layer.name}, image ${index + 1}${layer.keyframes[index] ? ', image clé' : ''}`);
         cell.setAttribute('aria-pressed', String(index === activeFrame));
+        cell.draggable = !layer.locked && Boolean(layer.frames[index] || layer.keyframes[index]);
+        if (cell.draggable) {
+          cell.addEventListener('dragstart', event => {
+            saveActiveFrame();
+            timelineDrag = { type: 'cel', layerId: layer.id, frame: index };
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', `cel:${layer.id}:${index}`);
+          });
+          cell.addEventListener('dragend', () => { timelineDrag = null; });
+        }
+        cell.addEventListener('dragover', event => {
+          if (timelineDrag?.type === 'cel' && !layer.locked) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+          }
+        });
+        cell.addEventListener('drop', event => {
+          if (timelineDrag?.type !== 'cel') return;
+          event.preventDefault();
+          event.stopPropagation();
+          moveTimelineCel(timelineDrag.layerId, timelineDrag.frame, layer.id, index);
+        });
         if (layer.frames[index]) {
           const thumb = doc.createElement('canvas');
           thumb.width = 48;
@@ -1657,7 +2165,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           thumb.getContext('2d').drawImage(ghostCanvas, 0, 0, thumb.width, thumb.height);
           cell.append(thumb);
         }
-        cell.addEventListener('click', () => selectFrame(index));
+        cell.addEventListener('click', () => selectTimelineCell(layer, index));
+        cell.addEventListener('contextmenu', event => {
+          selectTimelineCell(layer, index);
+          openContextMenu(event, 'cel');
+        });
         track.append(cell);
       }
       layerTracks.append(track);
@@ -1667,8 +2179,25 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   function selectFrame(index) {
     if (playbackTimer) stopPlayback();
     if (pathBase) cancelPath();
+    selectionRect = null;
     saveActiveFrame();
     activeFrame = index;
+    loadDraft();
+    paintFrame(activeFrame);
+    refreshTimeline();
+  }
+  function selectTimelineCell(layer, index) {
+    if (layer.locked) {
+      selectFrame(index);
+      return;
+    }
+    if (playbackTimer) stopPlayback();
+    if (pathBase) cancelPath();
+    selectionRect = null;
+    saveActiveFrame();
+    activeFrame = index;
+    activeLayerId = layer.id;
+    selectedLayerIds = new Set([layer.id]);
     loadDraft();
     paintFrame(activeFrame);
     refreshTimeline();
@@ -1676,6 +2205,85 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   function point(event) {
     const rect = canvas.getBoundingClientRect();
     return { x: (event.clientX - rect.left) * frameWidth / rect.width, y: (event.clientY - rect.top) * frameHeight / rect.height };
+  }
+  function pointInSelection(location) {
+    return selectionRect && location.x >= selectionRect.x && location.x <= selectionRect.x + selectionRect.width
+      && location.y >= selectionRect.y && location.y <= selectionRect.y + selectionRect.height;
+  }
+  function selectionPixelsAt(x, y, width, height) {
+    const left = Math.max(0, Math.floor(x));
+    const top = Math.max(0, Math.floor(y));
+    const right = Math.min(frameWidth, Math.ceil(x + width));
+    const bottom = Math.min(frameHeight, Math.ceil(y + height));
+    if (right <= left || bottom <= top) return null;
+    return { x: left, y: top, pixels: draftContext.getImageData(left, top, right - left, bottom - top) };
+  }
+  function connectedPixelSelection(location) {
+    const image = draftContext.getImageData(0, 0, frameWidth, frameHeight);
+    const seedX = Math.floor(location.x);
+    const seedY = Math.floor(location.y);
+    if (seedX < 0 || seedY < 0 || seedX >= frameWidth || seedY >= frameHeight) return null;
+    const seedOffset = (seedY * frameWidth + seedX) * 4;
+    if (image.data[seedOffset + 3] < 24) return null;
+    const seed = Array.from(image.data.slice(seedOffset, seedOffset + 4));
+    const visited = new Uint8Array(frameWidth * frameHeight);
+    const stack = new Int32Array(frameWidth * frameHeight);
+    let top = 0, minX = seedX, maxX = seedX, minY = seedY, maxY = seedY;
+    const seedIndex = seedY * frameWidth + seedX;
+    stack[top++] = seedIndex;
+    visited[seedIndex] = 1;
+    function queuePixel(pixelIndex) {
+      if (pixelIndex >= 0 && !visited[pixelIndex]) {
+        visited[pixelIndex] = 1;
+        stack[top++] = pixelIndex;
+      }
+    }
+    while (top) {
+      const pixelIndex = stack[--top];
+      const x = pixelIndex % frameWidth, y = Math.floor(pixelIndex / frameWidth);
+      const offset = pixelIndex * 4;
+      if (image.data[offset + 3] < 24 ||
+          Math.abs(image.data[offset] - seed[0]) > 45 ||
+          Math.abs(image.data[offset + 1] - seed[1]) > 45 ||
+          Math.abs(image.data[offset + 2] - seed[2]) > 45) continue;
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+      if (x > 0) queuePixel(pixelIndex - 1);
+      if (x + 1 < frameWidth) queuePixel(pixelIndex + 1);
+      if (y > 0) queuePixel(pixelIndex - frameWidth);
+      if (y + 1 < frameHeight) queuePixel(pixelIndex + frameWidth);
+    }
+    const componentWidth = maxX - minX + 1, componentHeight = maxY - minY + 1;
+    if (componentWidth * componentHeight > frameWidth * frameHeight * 0.75) return null;
+    const padding = 8;
+    const left = Math.max(0, minX - padding), topEdge = Math.max(0, minY - padding);
+    const right = Math.min(frameWidth, maxX + padding + 1), bottom = Math.min(frameHeight, maxY + padding + 1);
+    const pixels = draftContext.getImageData(left, topEdge, right - left, bottom - topEdge);
+    const source = draftContext.getImageData(0, 0, frameWidth, frameHeight);
+    for (let y = topEdge; y < bottom; y += 1) {
+      for (let x = left; x < right; x += 1) source.data[(y * frameWidth + x) * 4 + 3] = 0;
+    }
+    return { x: left, y: topEdge, pixels, source };
+  }
+  function beginSelectionMove(location, selection) {
+    if (!selection) return false;
+    rememberForUndo();
+    if (selection.source) draftContext.putImageData(selection.source, 0, 0);
+    else draftContext.clearRect(selection.x, selection.y, selection.pixels.width, selection.pixels.height);
+    selectionMove = { pixels: selection.pixels, grabX: location.x - selection.x, grabY: location.y - selection.y };
+    selectionRect = { x: selection.x, y: selection.y, width: selection.pixels.width, height: selection.pixels.height };
+    return true;
+  }
+  function ensureLayerMask(layer) {
+    if (!layer.maskFrames) {
+      layer.maskFrames = Array(frameCount).fill(null);
+    }
+    if (layer.maskFrames[activeFrame]) return;
+    const mask = context.createImageData(frameWidth, frameHeight);
+    for (let offset = 0; offset < mask.data.length; offset += 4) {
+      mask.data[offset] = mask.data[offset + 1] = mask.data[offset + 2] = mask.data[offset + 3] = 255;
+    }
+    layer.maskFrames[activeFrame] = mask;
   }
   function rememberForUndo() {
     const stack = undoStacks[activeFrame];
@@ -1685,6 +2293,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const layer = activeLayer();
     motionStack.push(layer ? motionPose(layer, activeFrame) : identityPose());
     if (motionStack.length > 30) motionStack.shift();
+    redoStacks[activeFrame].length = 0;
+    redoMotionStacks[activeFrame].length = 0;
   }
   function finishStroke() {
     if (!drawing) return;
@@ -1717,6 +2327,75 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     target.globalAlpha = 1;
     target.shadowBlur = 0;
   }
+  function drawingCompositeOperation(tool) {
+    if (tool === 'erase') return 'destination-out';
+    return activeLayer()?.lockTransparency ? 'source-atop' : 'source-over';
+  }
+  function floodFill(location) {
+    const active = activeLayer();
+    if (!active || active.locked) return;
+    const reference = layers.find(layer => layer.fillReference && layer.visible && !layer.muted) || active;
+    const sourceFrame = reference.id === active.id
+      ? draftContext.getImageData(0, 0, frameWidth, frameHeight)
+      : applyLayerMask(reference, displayedLayerFrame(reference, activeFrame), activeFrame);
+    if (!sourceFrame) return;
+    const source = sourceFrame.data;
+    const seedX = Math.floor(location.x), seedY = Math.floor(location.y);
+    if (seedX < 0 || seedY < 0 || seedX >= frameWidth || seedY >= frameHeight) return;
+    const seedIndex = seedY * frameWidth + seedX;
+    const seedOffset = seedIndex * 4;
+    const seed = source.slice(seedOffset, seedOffset + 4);
+    const fillColor = doc.querySelector('#brush-color').value;
+    const color = [1, 3, 5].map(offset => parseInt(fillColor.slice(offset, offset + 2), 16));
+    const tolerance = 32;
+    const visited = new Uint8Array(frameWidth * frameHeight);
+    const stack = new Int32Array(frameWidth * frameHeight);
+    let top = 0;
+    stack[top++] = seedIndex;
+    visited[seedIndex] = 1;
+    const matches = pixelIndex => {
+      const offset = pixelIndex * 4;
+      if (seed[3] < 12) return source[offset + 3] < 12;
+      return source[offset + 3] >= 12 &&
+        Math.abs(source[offset] - seed[0]) <= tolerance &&
+        Math.abs(source[offset + 1] - seed[1]) <= tolerance &&
+        Math.abs(source[offset + 2] - seed[2]) <= tolerance;
+    };
+    function enqueue(pixelIndex) {
+      if (pixelIndex >= 0 && !visited[pixelIndex]) {
+        visited[pixelIndex] = 1;
+        stack[top++] = pixelIndex;
+      }
+    }
+    const pixels = draftContext.getImageData(0, 0, frameWidth, frameHeight);
+    let changed = false;
+    while (top) {
+      const pixelIndex = stack[--top];
+      if (!matches(pixelIndex)) continue;
+      const offset = pixelIndex * 4;
+      const originalAlpha = pixels.data[offset + 3];
+      const fillAlpha = active.lockTransparency ? originalAlpha : 255;
+      if (pixels.data[offset] !== color[0] || pixels.data[offset + 1] !== color[1] ||
+          pixels.data[offset + 2] !== color[2] || pixels.data[offset + 3] !== fillAlpha) changed = true;
+      pixels.data[offset] = color[0];
+      pixels.data[offset + 1] = color[1];
+      pixels.data[offset + 2] = color[2];
+      pixels.data[offset + 3] = fillAlpha;
+      const x = pixelIndex % frameWidth, y = Math.floor(pixelIndex / frameWidth);
+      if (x > 0) enqueue(pixelIndex - 1);
+      if (x + 1 < frameWidth) enqueue(pixelIndex + 1);
+      if (y > 0) enqueue(pixelIndex - frameWidth);
+      if (y + 1 < frameHeight) enqueue(pixelIndex + frameWidth);
+    }
+    if (!changed) return;
+    rememberForUndo();
+    draftContext.putImageData(pixels, 0, 0);
+    saveActiveFrame();
+    markActiveKeyframe();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+  }
   function drawPathPreview(endpoint = null, commit = false) {
     if (!pathBase || pathPoints.length === 0) return;
     draftContext.putImageData(pathBase, 0, 0);
@@ -1731,9 +2410,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       draftContext.lineTo(endpoint.x, endpoint.y);
     }
     draftContext.strokeStyle = doc.querySelector('#brush-color').value;
+    draftContext.globalCompositeOperation = drawingCompositeOperation('brush');
     applyBrushStyle(draftContext, { pointerType: 'mouse', pressure: 0 });
     draftContext.stroke();
     resetBrushStyle(draftContext);
+    draftContext.globalCompositeOperation = 'source-over';
     paintFrame(activeFrame);
     if (commit) {
       pathBase = null;
@@ -1772,14 +2453,27 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       return;
     }
     if (activeLayer()?.locked) return;
-    if (activeTool === 'select') {
-      selectionStart = location;
-      selectionRect = { x: location.x, y: location.y, width: 0, height: 0 };
+    if (activeLayer()?.lockTransparency && activeTool === 'erase') {
+      doc.querySelector('#animation-status').textContent = 'Déverrouillez la transparence pour gommer les pixels.';
+      return;
+    }
+    if (activeTool === 'select' || activeTool === 'cursor') {
+      if (pointInSelection(location)) {
+        const selection = selectionPixelsAt(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height);
+        beginSelectionMove(location, selection);
+      } else {
+        const component = connectedPixelSelection(location);
+        if (component) {
+          beginSelectionMove(location, component);
+        } else {
+          selectionRect = null;
+          selectionStart = location;
+        }
+      }
       canvas.setPointerCapture(event.pointerId);
       paintFrame(activeFrame);
       return;
     }
-    if (activeTool === 'cursor') return;
     if (activeTool === 'transform' && !hasPixels(draftContext.getImageData(0, 0, frameWidth, frameHeight))) return;
     if (activeTool === 'path') {
       if (!pathBase) {
@@ -1794,23 +2488,19 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       return;
     }
     event.preventDefault();
-    rememberForUndo();
     if (activeTool === 'fill') {
-      draftContext.fillStyle = doc.querySelector('#brush-color').value;
-      draftContext.fillRect(0, 0, frameWidth, frameHeight);
-      saveActiveFrame();
-      markActiveKeyframe();
-      paintFrame(activeFrame);
-      refreshTimeline();
-      scheduleProjectSave();
+      floodFill(location);
       return;
     }
+    rememberForUndo();
     if (activeTool === 'text') {
       const text = global.prompt('Texte à ajouter :');
       if (text) {
         draftContext.fillStyle = doc.querySelector('#brush-color').value;
+        draftContext.globalCompositeOperation = drawingCompositeOperation('text');
         draftContext.font = `${Math.max(16, Number(doc.querySelector('#brush-size').value) * 4)}px sans-serif`;
         draftContext.fillText(text, location.x, location.y);
+        draftContext.globalCompositeOperation = 'source-over';
         saveActiveFrame();
         markActiveKeyframe();
         paintFrame(activeFrame);
@@ -1833,7 +2523,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     draftContext.moveTo(location.x, location.y);
     draftContext.lineTo(location.x + 0.01, location.y + 0.01);
     draftContext.strokeStyle = activeTool === 'erase' ? 'rgba(0,0,0,1)' : doc.querySelector('#brush-color').value;
-    draftContext.globalCompositeOperation = activeTool === 'erase' ? 'destination-out' : 'source-over';
+    draftContext.globalCompositeOperation = drawingCompositeOperation(activeTool);
     if (activeTool === 'erase') {
       draftContext.globalAlpha = 1;
       draftContext.lineWidth = Number(doc.querySelector('#brush-size').value);
@@ -1847,19 +2537,28 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     resetBrushStyle(draftContext);
     paintFrame(activeFrame);
   });
+  canvas.addEventListener('contextmenu', event => openContextMenu(event, 'scene'));
   canvas.addEventListener('pointermove', event => {
     if (pathBase && activeTool === 'path') {
       drawPathPreview(point(event));
       return;
     }
+    if (selectionMove) {
+      const location = point(event);
+      const x = Math.min(frameWidth - selectionMove.pixels.width, Math.max(0, location.x - selectionMove.grabX));
+      const y = Math.min(frameHeight - selectionMove.pixels.height, Math.max(0, location.y - selectionMove.grabY));
+      selectionRect = { x, y, width: selectionMove.pixels.width, height: selectionMove.pixels.height };
+      paintFrame(activeFrame);
+      return;
+    }
     if (selectionStart) {
       const location = point(event);
-      const x = Math.min(selectionStart.x, location.x);
-      const y = Math.min(selectionStart.y, location.y);
+      const x = Math.max(0, Math.min(selectionStart.x, location.x));
+      const y = Math.max(0, Math.min(selectionStart.y, location.y));
       selectionRect = {
         x, y,
-        width: Math.abs(location.x - selectionStart.x),
-        height: Math.abs(location.y - selectionStart.y)
+        width: Math.min(frameWidth - x, Math.abs(location.x - selectionStart.x)),
+        height: Math.min(frameHeight - y, Math.abs(location.y - selectionStart.y))
       };
       paintFrame(activeFrame);
       return;
@@ -1871,8 +2570,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       const startPose = transformStartPose;
       layer.motion[activeFrame] = {
         ...startPose,
-        x: startPose.x + location.x - paintStart.x,
-        y: startPose.y + location.y - paintStart.y
+        x: snapCanvasPosition(startPose.x + location.x - paintStart.x),
+        y: snapCanvasPosition(startPose.y + location.y - paintStart.y)
       };
       paintFrame(activeFrame);
       return;
@@ -1881,7 +2580,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     draftContext.moveTo(paintStart.x, paintStart.y);
     draftContext.lineTo(location.x, location.y);
     draftContext.strokeStyle = activeTool === 'erase' ? 'rgba(0,0,0,1)' : doc.querySelector('#brush-color').value;
-    draftContext.globalCompositeOperation = activeTool === 'erase' ? 'destination-out' : 'source-over';
+    draftContext.globalCompositeOperation = drawingCompositeOperation(activeTool);
     if (activeTool === 'erase') {
       draftContext.globalAlpha = 1;
       draftContext.lineWidth = Number(doc.querySelector('#brush-size').value);
@@ -1897,9 +2596,24 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     paintFrame(activeFrame);
   });
   function endCanvasPointer() {
+    if (selectionMove) {
+      draftContext.putImageData(selectionMove.pixels, selectionRect.x, selectionRect.y);
+      selectionMove = null;
+      saveActiveFrame();
+      markActiveKeyframe();
+      paintFrame(activeFrame);
+      refreshTimeline();
+      scheduleProjectSave();
+      return;
+    }
     if (selectionStart) {
       selectionStart = null;
       if (selectionRect && (selectionRect.width < 1 || selectionRect.height < 1)) selectionRect = null;
+      if (selectionRect) {
+        const selection = selectionPixelsAt(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height);
+        if (!selection?.pixels.data.some((value, index) => index % 4 === 3 && value > 0)) selectionRect = null;
+      }
+      paintFrame(activeFrame);
       return;
     }
     finishStroke();
@@ -1923,6 +2637,38 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     scheduleProjectSave();
   });
   doc.addEventListener('keydown', event => {
+    if (!main.classList.contains('animation-layout-open')) return;
+    const menu = doc.querySelector('#desk-action-menu');
+    if (event.key === 'Escape' && !menu.hidden && menu.classList.contains('is-context-menu')) {
+      hideActionMenu();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && !event.altKey) {
+      const key = event.key.toLowerCase();
+      if (['c', 'x', 'v', 'd'].includes(key) && !event.target.closest('input, textarea, select, [contenteditable="true"]')) {
+        event.preventDefault();
+        if (key === 'c') copyDrawing();
+        else if (key === 'x') cutDrawing();
+        else if (key === 'v') pasteDrawing();
+        else duplicateDrawing();
+        return;
+      }
+      if (key === 'z' && event.shiftKey) {
+        event.preventDefault();
+        doc.querySelector('#redo-frame').click();
+        return;
+      }
+      if (key === 'y') {
+        event.preventDefault();
+        doc.querySelector('#redo-frame').click();
+        return;
+      }
+      if (key === 'z') {
+        event.preventDefault();
+        doc.querySelector('#undo-frame').click();
+        return;
+      }
+    }
     if (activeTool !== 'path' || !pathBase) return;
     if (event.key === 'Enter') { event.preventDefault(); finishPath(); }
     if (event.key === 'Escape') { event.preventDefault(); cancelPath(); }
@@ -1932,8 +2678,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     if (pathBase) cancelPath();
     activeTool = tool;
     doc.querySelectorAll('[data-tool]').forEach(button => button.classList.toggle('selected', button.dataset.tool === tool));
-    canvas.style.cursor = tool === 'cursor' ? 'default' : tool === 'transform' ? 'move' : 'crosshair';
-    doc.querySelector('#animation-status').textContent = tool === 'path'
+    canvas.style.cursor = tool === 'cursor' || tool === 'select' ? 'default' : tool === 'transform' ? 'move' : 'crosshair';
+    doc.querySelector('#animation-status').textContent = tool === 'select' || tool === 'cursor'
+      ? 'Cliquez sur un dessin pour le sélectionner et le déplacer, ou faites glisser pour encadrer une zone.'
+      : tool === 'path'
       ? 'Cliquez pour poser des points, puis double-cliquez ou appuyez sur Entrée pour terminer.'
       : tool === 'transform' ? 'Glissez pour déplacer ; molette pour redimensionner, Maj + molette pour pivoter.' : 'Prêt';
   }
@@ -1995,8 +2743,23 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const previous = undoStacks[activeFrame].pop();
     if (!previous) return;
     const previousMotion = undoMotionStacks[activeFrame].pop();
+    redoStacks[activeFrame].push(cloneImageData(draftContext.getImageData(0, 0, frameWidth, frameHeight)));
+    redoMotionStacks[activeFrame].push(activeLayer() ? normalizePose(activeLayer().motion[activeFrame]) : identityPose());
     draftContext.putImageData(previous, 0, 0);
     if (previousMotion) activeLayer().motion[activeFrame] = previousMotion;
+    saveActiveFrame();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+  });
+  doc.querySelector('#redo-frame').addEventListener('click', () => {
+    const next = redoStacks[activeFrame].pop();
+    if (!next) return;
+    undoStacks[activeFrame].push(cloneImageData(draftContext.getImageData(0, 0, frameWidth, frameHeight)));
+    const nextMotion = redoMotionStacks[activeFrame].pop();
+    undoMotionStacks[activeFrame].push(activeLayer() ? motionPose(activeLayer(), activeFrame) : identityPose());
+    draftContext.putImageData(next, 0, 0);
+    if (nextMotion && activeLayer()) activeLayer().motion[activeFrame] = nextMotion;
     saveActiveFrame();
     paintFrame(activeFrame);
     refreshTimeline();
@@ -2018,9 +2781,12 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       layer.frames.splice(activeFrame, 1);
       layer.keyframes.splice(activeFrame, 1);
       layer.motion.splice(activeFrame, 1);
+      layer.maskFrames?.splice(activeFrame, 1);
     });
     undoStacks.splice(activeFrame, 1);
     undoMotionStacks.splice(activeFrame, 1);
+    redoStacks.splice(activeFrame, 1);
+    redoMotionStacks.splice(activeFrame, 1);
     frameCount -= 1;
     activeFrame = Math.min(activeFrame, frameCount - 1);
     loadDraft();
@@ -2037,9 +2803,12 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       layer.frames.splice(sourceIndex + 1, 0, mode === 'drawing' ? null : cloneImageData(source));
       layer.keyframes.splice(sourceIndex + 1, 0, mode === 'duplicate' && layer.keyframes[sourceIndex]);
       layer.motion.splice(sourceIndex + 1, 0, mode === 'drawing' ? identityPose() : normalizePose(layer.motion[sourceIndex]));
+      if (layer.maskFrames) layer.maskFrames.splice(sourceIndex + 1, 0, layer.maskFrames[sourceIndex] ? cloneImageData(layer.maskFrames[sourceIndex]) : null);
     });
     undoStacks.splice(sourceIndex + 1, 0, []);
     undoMotionStacks.splice(sourceIndex + 1, 0, []);
+    redoStacks.splice(sourceIndex + 1, 0, []);
+    redoMotionStacks.splice(sourceIndex + 1, 0, []);
     activeFrame += 1;
     frameCount += 1;
     loadDraft();
@@ -2060,6 +2829,14 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   doc.querySelector('#next-frame').addEventListener('click', () => selectFrame(Math.min(frameCount - 1, activeFrame + 1)));
   doc.querySelector('#timeline-next').addEventListener('click', () => selectFrame(Math.min(frameCount - 1, activeFrame + 1)));
   doc.querySelector('#timeline-scale').addEventListener('input', refreshTimeline);
+  magneticButton.addEventListener('click', () => {
+    magneticMode = !magneticMode;
+    updateMagneticButton();
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = magneticMode
+      ? 'Mode magnétique activé : grille 10 px, images clés et marqueurs.'
+      : 'Mode magnétique désactivé.';
+  });
   doc.querySelector('#onion-skin').addEventListener('change', () => {
     onionSkinEnabled = onionToggle.checked;
     doc.querySelector('#stage-onion').setAttribute('aria-pressed', String(onionToggle.checked));
@@ -2095,8 +2872,19 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   });
   doc.querySelector('#actions-tab').addEventListener('click', event => {
     const menu = doc.querySelector('#desk-action-menu');
+    menu.classList.remove('is-context-menu');
+    menu.style.left = '';
+    menu.style.top = '';
+    menu.querySelectorAll('button').forEach(button => { button.hidden = false; });
     menu.hidden = !menu.hidden;
     event.currentTarget.setAttribute('aria-expanded', String(!menu.hidden));
+  });
+  doc.addEventListener('pointerdown', event => {
+    const menu = doc.querySelector('#desk-action-menu');
+    if (!menu.hidden && menu.classList.contains('is-context-menu') &&
+        !menu.contains(event.target) && event.target !== canvas && !event.target.closest('.layer-label, .timeline-cell')) {
+      hideActionMenu();
+    }
   });
   doc.querySelector('#menu-export-video').addEventListener('click', () => {
     hideActionMenu();
@@ -2191,7 +2979,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     scheduleProjectSave();
   });
   function hideActionMenu() {
-    doc.querySelector('#desk-action-menu').hidden = true;
+    const menu = doc.querySelector('#desk-action-menu');
+    menu.hidden = true;
+    menu.classList.remove('is-context-menu');
+    menu.style.left = '';
+    menu.style.top = '';
     doc.querySelector('#actions-tab').setAttribute('aria-expanded', 'false');
   }
   function selectedLayer() { return layers.find(layer => layer.id === activeLayerId); }
@@ -2208,30 +3000,53 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   }
   function copyDrawing() {
     saveActiveFrame();
-    const frame = draftContext.getImageData(0, 0, frameWidth, frameHeight);
-    if (selectionRect) {
-      for (let y = 0; y < frameHeight; y += 1) {
-        for (let x = 0; x < frameWidth; x += 1) {
-          if (x < selectionRect.x || x > selectionRect.x + selectionRect.width || y < selectionRect.y || y > selectionRect.y + selectionRect.height) {
-            const offset = (y * frameWidth + x) * 4;
-            frame.data[offset + 3] = 0;
-          }
-        }
-      }
-    }
-    drawingClipboard = { imageData: frame, x: 0, y: 0 };
-    doc.querySelector('#animation-status').textContent = 'Dessin copié.';
+    const area = selectionRect
+      ? selectionPixelsAt(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height)
+      : { x: 0, y: 0, pixels: draftContext.getImageData(0, 0, frameWidth, frameHeight) };
+    if (!area) return false;
+    drawingClipboard = { imageData: area.pixels, x: area.x, y: area.y };
+    doc.querySelector('#animation-status').textContent = selectionRect ? 'Sélection copiée.' : 'Dessin copié.';
+    return true;
+  }
+  function cutDrawing() {
+    if (!copyDrawing() || activeLayer()?.locked) return;
+    rememberForUndo();
+    if (selectionRect) draftContext.clearRect(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height);
+    else draftContext.clearRect(0, 0, frameWidth, frameHeight);
+    saveActiveFrame();
+    markActiveKeyframe();
+    selectionRect = null;
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = 'Dessin coupé.';
   }
   function pasteDrawing() {
     if (!drawingClipboard || activeLayer()?.locked) return;
     rememberForUndo();
-    draftContext.putImageData(cloneImageData(drawingClipboard.imageData), drawingClipboard.x, drawingClipboard.y);
+    const targetX = selectionRect ? selectionRect.x : drawingClipboard.x;
+    const targetY = selectionRect ? selectionRect.y : drawingClipboard.y;
+    draftContext.putImageData(cloneImageData(drawingClipboard.imageData), targetX, targetY);
+    selectionRect = { x: targetX, y: targetY, width: drawingClipboard.imageData.width, height: drawingClipboard.imageData.height };
     saveActiveFrame();
     markActiveKeyframe();
     paintFrame(activeFrame);
     refreshTimeline();
     scheduleProjectSave();
     doc.querySelector('#animation-status').textContent = 'Dessin collé.';
+  }
+  function duplicateDrawing() {
+    if (!copyDrawing() || activeLayer()?.locked) return;
+    const originalX = drawingClipboard.x, originalY = drawingClipboard.y;
+    const width = drawingClipboard.imageData.width, height = drawingClipboard.imageData.height;
+    const offset = magneticMode ? 10 : 1;
+    const x = Math.min(Math.max(0, frameWidth - width), originalX + offset);
+    const y = Math.min(Math.max(0, frameHeight - height), originalY + offset);
+    drawingClipboard.x = x;
+    drawingClipboard.y = y;
+    selectionRect = { x, y, width, height };
+    pasteDrawing();
+    doc.querySelector('#animation-status').textContent = 'Dessin dupliqué.';
   }
   function removeSelectedLayers() {
     const removable = layers.filter(layer => selectedLayerIds.has(layer.id) && !layer.locked);
@@ -2354,6 +3169,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   });
   doc.querySelector('#menu-copy-drawing').addEventListener('click', () => { copyDrawing(); hideActionMenu(); });
   doc.querySelector('#menu-paste-drawing').addEventListener('click', () => { pasteDrawing(); hideActionMenu(); });
+  doc.querySelector('#menu-cut-drawing').addEventListener('click', () => { cutDrawing(); hideActionMenu(); });
+  doc.querySelector('#menu-duplicate-drawing').addEventListener('click', () => { duplicateDrawing(); hideActionMenu(); });
   doc.querySelector('#menu-select-all-layers').addEventListener('click', () => {
     selectedLayerIds = new Set(layers.map(layer => layer.id));
     refreshTimeline();
@@ -2396,6 +3213,65 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     }
     hideActionMenu();
   });
+  doc.querySelector('#menu-toggle-layer-onion').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) {
+      layer.onionSkin = layer.onionSkin === false;
+      paintFrame(activeFrame);
+      refreshTimeline();
+      scheduleProjectSave();
+    }
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-focus-layer').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (!layer) { hideActionMenu(); return; }
+    if (soloLayerId === layer.id) {
+      soloVisibilityBackup?.forEach((visible, id) => {
+        const item = layers.find(candidate => candidate.id === id);
+        if (item) item.visible = visible;
+      });
+      soloLayerId = null;
+      soloVisibilityBackup = null;
+    } else {
+      soloVisibilityBackup = new Map(layers.map(item => [item.id, item.visible]));
+      soloLayerId = layer.id;
+    }
+    paintFrame(activeFrame);
+    refreshTimeline();
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-lock-transparency').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer && !layer.locked) {
+      layer.lockTransparency = !layer.lockTransparency;
+      scheduleProjectSave();
+    }
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-fill-reference').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) {
+      layer.fillReference = !layer.fillReference;
+      if (layer.fillReference) layers.filter(item => item !== layer).forEach(item => { item.fillReference = false; });
+      doc.querySelector('#animation-status').textContent = layer.fillReference
+        ? `« ${layer.name} » est le calque de référence du remplissage.`
+        : 'Calque de référence du remplissage désactivé.';
+      refreshTimeline();
+      scheduleProjectSave();
+    }
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-layer-mask').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer && !layer.locked) {
+      ensureLayerMask(layer);
+      layer.maskEnabled = !layer.maskEnabled;
+      paintFrame(activeFrame);
+      scheduleProjectSave();
+    }
+    hideActionMenu();
+  });
   doc.querySelector('#menu-layer-properties').addEventListener('click', () => {
     hideActionMenu();
     openLayerProperties();
@@ -2410,7 +3286,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       const bakedContext = bakedCanvas.getContext('2d');
       layer.frames = Array.from({ length: frameCount }, (_, index) => {
         bakedContext.clearRect(0, 0, frameWidth, frameHeight);
-        putLayer(bakedContext, displayedLayerFrame(layer, index), 1, motionPose(layer, index), layer);
+        putLayer(bakedContext, applyLayerMask(layer, displayedLayerFrame(layer, index), index), 1, motionPose(layer, index), layer);
         return bakedContext.getImageData(0, 0, frameWidth, frameHeight);
       });
       layer.opacity = 1;
@@ -2418,10 +3294,57 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       layer.motion = Array.from({ length: frameCount }, identityPose);
       layer.keyframes = layer.frames.map(hasPixels);
       layer.type = 'pixel';
+      layer.maskEnabled = false;
+      layer.maskFrames = null;
       loadDraft();
       paintFrame(activeFrame);
       refreshTimeline();
       scheduleProjectSave();
+    }
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-merge-down').addEventListener('click', () => {
+    const upper = selectedLayer();
+    const upperIndex = layers.findIndex(layer => layer.id === upper?.id);
+    const lower = layers[upperIndex - 1];
+    if (!upper || !lower || upper.locked || lower.locked || lower.id === 'background') {
+      doc.querySelector('#animation-status').textContent = 'Impossible de fusionner : le calque inférieur est verrouillé ou absent.';
+      hideActionMenu();
+      return;
+    }
+    saveActiveFrame();
+    const mergedFrames = Array.from({ length: frameCount }, (_, index) => {
+      const output = doc.createElement('canvas');
+      output.width = frameWidth;
+      output.height = frameHeight;
+      const outputContext = output.getContext('2d');
+      putLayer(outputContext, applyLayerMask(lower, displayedLayerFrame(lower, index), index), 1, motionPose(lower, index), lower);
+      putLayer(outputContext, applyLayerMask(upper, displayedLayerFrame(upper, index), index), 1, motionPose(upper, index), upper);
+      return outputContext.getImageData(0, 0, frameWidth, frameHeight);
+    });
+    lower.frames = mergedFrames;
+    lower.keyframes = mergedFrames.map(hasPixels);
+    lower.motion = Array.from({ length: frameCount }, identityPose);
+    lower.opacity = 1;
+    lower.blendMode = 'source-over';
+    lower.lockTransparency = false;
+    lower.maskEnabled = false;
+    lower.maskFrames = null;
+    layers = layers.filter(layer => layer !== upper);
+    activeLayerId = lower.id;
+    selectedLayerIds = new Set([lower.id]);
+    loadDraft();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = `« ${upper.name} » fusionné vers « ${lower.name} ».`;
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-delete-layer').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) {
+      selectedLayerIds = new Set([layer.id]);
+      removeSelectedLayers();
     }
     hideActionMenu();
   });
@@ -2432,6 +3355,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     saveActiveFrame();
     const newLayer = makeLayer(`${layer.name} — image ${activeFrame + 1}`);
     newLayer.frames[activeFrame] = cloneImageData(layer.frames[activeFrame]);
+    if (layer.maskFrames) {
+      newLayer.maskFrames = Array(frameCount).fill(null);
+      newLayer.maskFrames[activeFrame] = layer.maskFrames[activeFrame] ? cloneImageData(layer.maskFrames[activeFrame]) : null;
+    }
     newLayer.keyframes[activeFrame] = layer.keyframes[activeFrame];
     newLayer.motion[activeFrame] = normalizePose(layer.motion[activeFrame]);
     layer.frames[activeFrame] = null;
@@ -2456,7 +3383,17 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       paintFrame(activeFrame);
       refreshTimeline();
       scheduleProjectSave();
-    } else removeSelectedLayers();
+    } else if (contextMenuScope === 'layer') {
+      removeSelectedLayers();
+    } else if (!activeLayer()?.locked) {
+      rememberForUndo();
+      draftContext.clearRect(0, 0, frameWidth, frameHeight);
+      saveActiveFrame();
+      markActiveKeyframe();
+      paintFrame(activeFrame);
+      refreshTimeline();
+      scheduleProjectSave();
+    }
     hideActionMenu();
   });
   async function exportVideo() {
@@ -2523,6 +3460,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     }, 1000 / fps);
   }
   doc.querySelector('#export-video').addEventListener('click', exportVideo);
+  updateMagneticButton();
   refreshTimeline();
   loadDraft();
   paintFrame(0);
