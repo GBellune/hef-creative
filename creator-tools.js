@@ -99,6 +99,7 @@
   toolLabel.textContent = 'Outils créatifs';
   const toolNav = doc.createElement('nav');
   toolNav.className = 'tool-nav';
+  toolNav.id = 'creative-tools-nav';
   toolNav.setAttribute('aria-label', 'Outils créatifs');
   toolNav.innerHTML = '<button type="button" data-view="projects" aria-current="page"><span aria-hidden="true">▦</span>Mes projets</button><button type="button" data-view="addons"><span aria-hidden="true">◆</span>Add-ons Minecraft</button><button type="button" data-view="animation"><span aria-hidden="true">▻</span>Animation vidéo</button>';
   sidebar.querySelector('.side-note')?.before(toolLabel, toolNav);
@@ -108,27 +109,39 @@
     <section class="tool-view" id="addons-view" hidden aria-labelledby="addons-title">
       <p class="eyebrow">Atelier Minecraft</p>
       <h1 id="addons-title">Créez votre add-on</h1>
-      <p class="intro tool-intro">Imaginez un objet, personnalisez son icône et exportez un pack prêt à importer.</p>
+      <p class="intro tool-intro">Créez des objets, blocs, créatures, recettes ou disques musicaux et exportez un pack prêt à importer dans Minecraft Bedrock.</p>
       <div class="addon-layout">
         <form class="addon-form" id="addon-form">
           <div class="addon-fields">
-            <div class="field"><label for="addon-name">Nom de l’objet</label><input id="addon-name" maxlength="40" required value="Cristal solaire"></div>
-            <div class="field"><label for="addon-id">Identifiant technique</label><div class="identifier"><span>hefcreative:</span><input id="addon-id" maxlength="32" pattern="[a-z0-9_]+" required value="cristal_solaire" aria-describedby="addon-id-help"></div><small id="addon-id-help">Lettres minuscules, chiffres et tirets bas.</small></div>
-            <div class="field"><label for="addon-description">Description</label><textarea id="addon-description" maxlength="120" placeholder="Décrivez votre objet…">Un cristal façonné dans la lumière du soleil.</textarea></div>
-            <div class="addon-options"><div class="field"><label for="addon-stack">Taille de pile</label><select id="addon-stack"><option>1</option><option>16</option><option selected>64</option></select></div><label class="check-field"><input id="addon-hand" type="checkbox"> Tenir l’objet comme un outil</label></div>
-            <div class="field"><label for="addon-color">Couleur de l’icône</label><div class="texture-controls"><input id="addon-color" type="color" value="#eaa44e" aria-label="Couleur de l’icône"><label class="upload-texture" for="addon-texture">Importer une texture PNG</label><input class="visually-hidden" id="addon-texture" type="file" accept="image/png,image/jpeg,image/webp"></div><small>La texture importée sera adaptée en 16 × 16 pixels.</small></div>
+            <div class="field"><label for="addon-kind">Type de contenu</label><select id="addon-kind"><option value="item">Objet personnalisé</option><option value="block">Bloc personnalisé</option><option value="entity">Entité personnalisée</option><option value="recipe">Recette personnalisée</option><option value="music-disc">Disque musical personnalisé</option></select></div>
+            <div class="field"><label for="addon-name">Nom</label><input id="addon-name" maxlength="40" required value="Cristal solaire"></div>
+            <div class="field"><label for="addon-id">Identifiant technique</label><div class="identifier"><span>hefcreative:</span><input id="addon-id" maxlength="32" pattern="[a-z0-9_]+" required value="cristal_solaire" aria-describedby="addon-id-help"></div><small id="addon-id-help">Minuscules, chiffres et tirets bas. Préfixe hefcreative: ajouté à l’export.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="item"><label for="addon-stack">Taille de pile</label><select id="addon-stack"><option>1</option><option>16</option><option selected>64</option></select><label class="check-field"><input id="addon-hand" type="checkbox"> Tenir l’objet comme un outil</label></div>
+            <div class="field addon-kind-panel" data-addon-kind="block" hidden><label for="addon-hardness">Résistance à la pioche (secondes)</label><input id="addon-hardness" type="number" min="0" max="3600" step="0.1" value="1.5" required></div>
+            <div class="field addon-kind-panel" data-addon-kind="entity" hidden><label for="addon-health">Points de vie</label><input id="addon-health" type="number" min="1" max="1024" step="1" value="20" required><small>Crée une créature passive cubique avec un œuf d’apparition.</small></div>
+            <div class="field addon-kind-panel" data-addon-kind="recipe" hidden>
+              <label for="recipe-mode">Type de recette</label><select id="recipe-mode"><option value="shaped">Forme précise (3 × 3)</option><option value="shapeless">Sans forme précise</option></select>
+              <label for="recipe-ingredients" id="recipe-ingredients-label">Grille : un identifiant d’objet par case, séparé par des virgules (ligne vide = case vide)</label><textarea id="recipe-ingredients" rows="3" spellcheck="false">minecraft:stone,minecraft:stone,minecraft:stone
+minecraft:stone,,minecraft:stone
+minecraft:stone,minecraft:stone,minecraft:stone</textarea>
+              <label for="recipe-result">Identifiant du résultat</label><input id="recipe-result" required value="hefcreative:cristal_solaire" pattern="[a-z0-9_.-]+:[a-z0-9_./-]+">
+              <label for="recipe-count">Quantité obtenue</label><input id="recipe-count" type="number" min="1" max="64" value="1" required>
+              <small>Exemple d’ingrédient : minecraft:diamond ou hefcreative:cristal_solaire.</small>
+            </div>
+            <div class="field addon-kind-panel" data-addon-kind="music-disc" hidden><label for="addon-audio">Fichier audio OGG</label><input id="addon-audio" type="file" accept=".ogg,audio/ogg" required><label for="addon-duration">Durée (secondes)</label><input id="addon-duration" type="number" min="1" max="600" value="180" required><small>Le navigateur peut lire l’aperçu ; Minecraft Bedrock attend un fichier OGG.</small></div>
+            <div class="field addon-kind-panel" data-addon-texture><label for="addon-color">Couleur de la texture</label><div class="texture-controls"><input id="addon-color" type="color" value="#eaa44e" aria-label="Couleur de la texture"><label class="upload-texture" for="addon-texture">Importer une texture PNG/JPEG</label><input class="visually-hidden" id="addon-texture" type="file" accept="image/png,image/jpeg,image/webp"></div><small id="addon-texture-help">La texture sera convertie en PNG 16 × 16.</small></div>
             <button class="primary" type="submit"><span aria-hidden="true">↓</span> Télécharger le .mcaddon</button>
-            <p class="tool-status" id="addon-status" role="status" aria-live="polite">Le pack contient un objet personnalisé et son icône.</p>
+            <p class="tool-status" id="addon-status" role="status" aria-live="polite">Choisissez un type de contenu pour configurer votre add-on Bedrock.</p>
           </div>
         </form>
-        <div class="addon-preview" aria-label="Aperçu de l’objet Minecraft">
-          <div class="preview-heading"><span>APERÇU EN JEU</span><span class="preview-version">BEDROCK</span></div>
-          <div class="item-stage"><canvas id="addon-preview" width="16" height="16" aria-label="Icône de l’objet"></canvas></div>
+        <div class="addon-preview" aria-label="Aperçu de l’add-on">
+          <div class="preview-heading"><span>APERÇU DE L’ADD-ON</span><span class="preview-version">BEDROCK</span></div>
+          <div class="item-stage"><canvas id="addon-preview" width="16" height="16" aria-label="Aperçu de la texture"></canvas></div>
           <h2 id="addon-preview-name">Cristal solaire</h2>
           <p id="addon-preview-id">hefcreative:cristal_solaire</p>
           <div class="preview-divider"></div>
-          <div class="pack-includes"><span class="pack-check">✓</span><span><strong>Pack de comportement</strong><small>Définition de l’objet et ses propriétés</small></span></div>
-          <div class="pack-includes"><span class="pack-check">✓</span><span><strong>Pack de ressources</strong><small>Texture et atlas d’icônes personnalisés</small></span></div>
+          <div class="pack-includes"><span class="pack-check">✓</span><span><strong>Pack de comportement</strong><small>Définitions, entités et recettes</small></span></div>
+          <div class="pack-includes"><span class="pack-check">✓</span><span><strong>Pack de ressources</strong><small>Textures et ressources audio</small></span></div>
         </div>
       </div>
     </section>
@@ -199,6 +212,7 @@
   const breadcrumb = main.querySelector('.topline > div');
   function activateView(name) {
     doc.body.classList.toggle('animation-open', name === 'animation' || name === 'library' || name === 'deskProjects');
+    main.classList.toggle('animation-layout-open', name === 'animation');
     doc.body.classList.toggle('library-open', name === 'library');
     doc.body.classList.toggle('desk-projects-open', name === 'deskProjects');
     Object.entries(views).forEach(([key, view]) => { view.hidden = key !== name; });
@@ -627,7 +641,32 @@
   const addonName = doc.querySelector('#addon-name');
   const addonId = doc.querySelector('#addon-id');
   const addonForm = doc.querySelector('#addon-form');
+  const addonKind = doc.querySelector('#addon-kind');
+  const addonStatus = doc.querySelector('#addon-status');
+  const addonAudioInput = doc.querySelector('#addon-audio');
+  let importedAudio = null;
   let importedTexture = null;
+
+  function updateAddonKind() {
+    const kind = addonKind.value;
+    doc.querySelectorAll('.addon-kind-panel').forEach(panel => {
+      const visible = panel.dataset.addonKind === kind || (panel.hasAttribute('data-addon-texture') && kind !== 'recipe');
+      panel.hidden = !visible;
+      panel.querySelectorAll('input,select,textarea').forEach(input => { input.disabled = !visible; });
+    });
+    addonId.value = addonId.value.split(':').pop();
+    doc.querySelector('#addon-texture-help').textContent = kind === 'block' || kind === 'entity'
+      ? 'La texture sera appliquée au bloc ou au modèle cubique.'
+      : 'La texture sera convertie en PNG 16 × 16.';
+    addonStatus.textContent = {
+      item: 'Un objet personnalisé avec texture sera exporté.',
+      block: 'Un bloc cubique destructible et sa texture seront exportés.',
+      entity: 'Une créature passive, son œuf et son modèle cubique seront exportés.',
+      recipe: 'Une recette Bedrock sera ajoutée au pack de comportement.',
+      'music-disc': 'Un objet musical et le fichier OGG fourni seront exportés.'
+    }[kind];
+    drawGem();
+  }
 
   function hexToRgb(hex) { return [1, 3, 5].map(offset => parseInt(hex.slice(offset, offset + 2), 16)); }
   function shade(hex, factor) { return `rgb(${hexToRgb(hex).map(channel => Math.max(0, Math.min(255, Math.round(channel * factor)))).join(' ')})`; }
@@ -647,6 +686,8 @@
   }
   addonName.addEventListener('input', () => {
     if (!addonId.dataset.edited) addonId.value = slugify(addonName.value);
+    const recipeResult = doc.querySelector('#recipe-result');
+    if (!recipeResult.dataset.edited) recipeResult.value = `hefcreative:${slugify(addonId.value)}`;
     if (!importedTexture) drawGem();
     else {
       doc.querySelector('#addon-preview-name').textContent = addonName.value || 'Votre objet';
@@ -655,8 +696,21 @@
   });
   addonId.addEventListener('input', () => {
     addonId.dataset.edited = 'true';
+    const recipeResult = doc.querySelector('#recipe-result');
+    if (!recipeResult.dataset.edited) recipeResult.value = `hefcreative:${slugify(addonId.value)}`;
     if (!importedTexture) drawGem();
     else doc.querySelector('#addon-preview-id').textContent = `hefcreative:${addonId.value || 'nouvel_objet'}`;
+  });
+  doc.querySelector('#recipe-result').addEventListener('input', event => { event.target.dataset.edited = 'true'; });
+  addonKind.addEventListener('change', updateAddonKind);
+  doc.querySelector('#recipe-mode').addEventListener('change', event => {
+    const shaped = event.target.value === 'shaped';
+    doc.querySelector('#recipe-ingredients-label').textContent = shaped
+      ? 'Grille : un identifiant d’objet par case, séparé par des virgules (ligne vide = case vide)'
+      : 'Ingrédients : un identifiant d’objet par ligne';
+    doc.querySelector('#recipe-ingredients').value = shaped
+      ? 'minecraft:stone,minecraft:stone,minecraft:stone\nminecraft:stone,,minecraft:stone\nminecraft:stone,minecraft:stone,minecraft:stone'
+      : 'minecraft:stone\nminecraft:stick';
   });
   addonColor.addEventListener('input', () => { importedTexture = null; drawGem(); });
   doc.querySelector('#addon-texture').addEventListener('change', async event => {
@@ -669,10 +723,20 @@
       addonContext.drawImage(bitmap, 0, 0, 16, 16);
       bitmap.close();
       importedTexture = addonCanvas.toDataURL('image/png');
-      doc.querySelector('#addon-status').textContent = `Texture « ${file.name} » prête à être intégrée au pack.`;
+      addonStatus.textContent = `Texture « ${file.name} » prête à être intégrée au pack.`;
     } catch {
-      doc.querySelector('#addon-status').textContent = 'Cette image n’a pas pu être chargée. Choisissez un autre fichier.';
+      addonStatus.textContent = 'Cette image n’a pas pu être chargée. Choisissez un autre fichier.';
     }
+  });
+  addonAudioInput.addEventListener('change', () => {
+    importedAudio = addonAudioInput.files?.[0] || null;
+    if (importedAudio && importedAudio.type !== 'audio/ogg' && !importedAudio.name.toLowerCase().endsWith('.ogg')) {
+      importedAudio = null;
+      addonAudioInput.value = '';
+      addonStatus.textContent = 'Le disque musical nécessite un fichier audio OGG.';
+      return;
+    }
+    if (importedAudio) addonStatus.textContent = `Fichier « ${importedAudio.name} » prêt pour le disque musical.`;
   });
 
   function uuid() {
@@ -694,69 +758,258 @@
     return new Promise((resolve, reject) => canvas.toBlob(blob => blob ? blob.arrayBuffer().then(buffer => resolve(new Uint8Array(buffer))) : reject(new Error('Texture PNG indisponible.')), 'image/png'));
   }
   function jsonFile(value) { return JSON.stringify(value, null, 2); }
+  function recipeIngredientIds() {
+    const ingredientText = doc.querySelector('#recipe-ingredients').value.trim();
+    const mode = doc.querySelector('#recipe-mode').value;
+    if (!ingredientText) throw new Error('Ajoutez au moins un ingrédient à la recette.');
+    if (mode === 'shapeless') {
+      const ingredients = ingredientText.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+      if (ingredients.length > 9) throw new Error('Une recette sans forme accepte au maximum 9 ingrédients.');
+      ingredients.forEach(identifier => {
+        if (!/^[a-z0-9_.-]+:[a-z0-9_./-]+$/.test(identifier)) throw new Error(`Identifiant d’ingrédient invalide : ${identifier}`);
+      });
+      return { ingredients: ingredients.map(item => ({ item })) };
+    }
+    const rows = ingredientText.split(/\r?\n/).map(line => line.split(',').map(item => item.trim()));
+    if (rows.length !== 3 || rows.some(row => row.length !== 3)) throw new Error('La grille de recette doit contenir exactement 3 lignes de 3 cases séparées par des virgules.');
+    const key = {};
+    const pattern = rows.map((row, rowIndex) => row.map((identifier, columnIndex) => {
+      if (!identifier) return ' ';
+      if (!/^[a-z0-9_.-]+:[a-z0-9_./-]+$/.test(identifier)) throw new Error(`Identifiant d’ingrédient invalide : ${identifier}`);
+      const symbol = String.fromCharCode(65 + rowIndex * 3 + columnIndex);
+      key[symbol] = { item: identifier };
+      return symbol;
+    }).join(''));
+    if (!Object.keys(key).length) throw new Error('Ajoutez au moins un ingrédient à la recette.');
+    return { key, pattern };
+  }
+  async function createAddonFiles({ displayName, contentId, kind, textureBytes, resourceUuid, behaviorUuid, version, audioFile }) {
+    const namespaceId = `hefcreative:${contentId}`;
+    const resourceFiles = [];
+    const behaviorFiles = [];
+    let itemAtlas;
+    if (kind === 'item') {
+      const item = {
+        format_version: '1.20.80',
+        'minecraft:item': {
+          description: { identifier: namespaceId, menu_category: { category: 'items' } },
+          components: {
+            'minecraft:display_name': { value: displayName },
+            'minecraft:icon': contentId,
+            'minecraft:max_stack_size': Number(doc.querySelector('#addon-stack').value),
+            'minecraft:hand_equipped': doc.querySelector('#addon-hand').checked
+          }
+        }
+      };
+      behaviorFiles.push({ name: `items/${contentId}.json`, content: jsonFile(item) });
+      itemAtlas = { [contentId]: { textures: `textures/items/${contentId}` } };
+      resourceFiles.push({ name: `textures/items/${contentId}.png`, content: textureBytes });
+    } else if (kind === 'block') {
+      const hardness = Number(doc.querySelector('#addon-hardness').value);
+      const localizedName = displayName.replace(/[\r\n]+/g, ' ');
+      const block = {
+        format_version: '1.20.80',
+        'minecraft:block': {
+          description: { identifier: namespaceId, menu_category: { category: 'construction' } },
+          components: {
+            'minecraft:material_instances': {
+              '*': { texture: contentId, render_method: 'opaque' }
+            },
+            'minecraft:destructible_by_mining': { seconds_to_destroy: hardness },
+            'minecraft:destructible_by_explosion': { explosion_resistance: hardness * 3 }
+          }
+        }
+      };
+      behaviorFiles.push({ name: `blocks/${contentId}.json`, content: jsonFile(block) });
+      resourceFiles.push(
+        { name: `textures/blocks/${contentId}.png`, content: textureBytes },
+        { name: 'textures/terrain_texture.json', content: jsonFile({
+          resource_pack_name: displayName,
+          texture_name: 'atlas.terrain',
+          padding: 8,
+          num_mip_levels: 4,
+          texture_data: { [contentId]: { textures: `textures/blocks/${contentId}` } }
+        }) },
+        { name: 'blocks.json', content: jsonFile({ [namespaceId]: { textures: contentId, sound: 'stone' } }) },
+        { name: 'texts/languages.json', content: jsonFile(['en_US']) },
+        { name: 'texts/en_US.lang', content: `tile.${namespaceId}.name=${localizedName}\n` }
+      );
+    } else if (kind === 'entity') {
+      const localizedName = displayName.replace(/[\r\n]+/g, ' ');
+      const entity = {
+        format_version: '1.20.80',
+        'minecraft:entity': {
+          description: {
+            identifier: namespaceId,
+            is_spawnable: true,
+            is_summonable: true,
+            is_experimental: false,
+            properties: {}
+          },
+          components: {
+            'minecraft:type_family': { family: ['hefcreative', 'mob'] },
+            'minecraft:health': { value: Number(doc.querySelector('#addon-health').value), max: Number(doc.querySelector('#addon-health').value) },
+            'minecraft:collision_box': { width: 0.8, height: 1.8 },
+            'minecraft:movement': { value: 0.25 },
+            'minecraft:movement.basic': {},
+            'minecraft:navigation.walk': { can_path_over_water: true, avoid_damage_blocks: true },
+            'minecraft:jump.static': {},
+            'minecraft:physics': {},
+            'minecraft:pushable': { is_pushable: true, is_pushable_by_piston: true },
+            'minecraft:nameable': {},
+            'minecraft:behavior.random_stroll': { priority: 6, speed_multiplier: 1 },
+            'minecraft:behavior.look_at_player': { priority: 7, look_distance: 6, probability: 0.02 },
+            'minecraft:behavior.random_look_around': { priority: 8 },
+            'minecraft:spawn_egg': { base_color: addonColor.value, overlay_color: '#ffffff' }
+          }
+        }
+      };
+      const geometryId = `geometry.${contentId}`;
+      const clientEntity = {
+        format_version: '1.10.0',
+        'minecraft:client_entity': {
+          description: {
+            identifier: namespaceId,
+            materials: { default: 'entity_alphatest' },
+            textures: { default: `textures/entity/${contentId}` },
+            geometry: { default: geometryId },
+            render_controllers: [`controller.render.hefcreative.${contentId}`]
+          }
+        }
+      };
+      const geometry = {
+        format_version: '1.12.0',
+        'minecraft:geometry': [{
+          description: { identifier: geometryId, texture_width: 16, texture_height: 16, visible_bounds_width: 2, visible_bounds_height: 2, visible_bounds_offset: [0, 1, 0] },
+          bones: [{ name: 'root', pivot: [0, 0, 0], cubes: [{ origin: [-8, 0, -8], size: [16, 16, 16], uv: [0, 0] }] }]
+        }]
+      };
+      behaviorFiles.push({ name: `entities/${contentId}.json`, content: jsonFile(entity) });
+      resourceFiles.push(
+        { name: `entity/${contentId}.entity.json`, content: jsonFile(clientEntity) },
+        { name: `models/entity/${contentId}.geo.json`, content: jsonFile(geometry) },
+        { name: `textures/entity/${contentId}.png`, content: textureBytes },
+        { name: 'textures/item_texture.json', content: jsonFile({
+          resource_pack_name: displayName,
+          texture_name: 'atlas.items',
+          texture_data: { [`${contentId}_spawn_egg`]: { textures: `textures/items/${contentId}_spawn_egg` } }
+        }) },
+        { name: `textures/items/${contentId}_spawn_egg.png`, content: textureBytes },
+        { name: 'texts/languages.json', content: jsonFile(['en_US']) },
+        { name: 'texts/en_US.lang', content: `entity.${namespaceId}.name=${localizedName}\nitem.spawn_egg.entity.${namespaceId}.name=Spawn ${localizedName}\n` }
+      );
+    } else if (kind === 'recipe') {
+      const recipe = recipeIngredientIds();
+      const result = doc.querySelector('#recipe-result').value.trim();
+      if (!/^[a-z0-9_.-]+:[a-z0-9_./-]+$/.test(result)) throw new Error('L’identifiant du résultat doit inclure un espace de noms, par exemple minecraft:diamond.');
+      const recipeData = { ...recipe, result: { item: result, count: Number(doc.querySelector('#recipe-count').value) } };
+      const recipeJson = { format_version: '1.20.10' };
+      if (doc.querySelector('#recipe-mode').value === 'shaped') {
+        recipeJson['minecraft:recipe_shaped'] = { description: { identifier: namespaceId }, ...recipeData, unlock: [{ context: 'AlwaysUnlocked' }] };
+      } else {
+        recipeJson['minecraft:recipe_shapeless'] = { description: { identifier: namespaceId }, ...recipeData };
+      }
+      behaviorFiles.push({ name: `recipes/${contentId}.json`, content: jsonFile(recipeJson) });
+    } else if (kind === 'music-disc') {
+      if (!audioFile) throw new Error('Sélectionnez un fichier audio OGG pour créer le disque musical.');
+      const record = {
+        format_version: '1.20.80',
+        'minecraft:item': {
+          description: { identifier: namespaceId, menu_category: { category: 'items' } },
+          components: {
+            'minecraft:display_name': { value: displayName },
+            'minecraft:icon': contentId,
+            'minecraft:max_stack_size': 1,
+            'minecraft:record': { comparator_signal: 1, duration: Number(doc.querySelector('#addon-duration').value), sound_event: `hefcreative.${contentId}` }
+          }
+        }
+      };
+      behaviorFiles.push({ name: `items/${contentId}.json`, content: jsonFile(record) });
+      itemAtlas = { [contentId]: { textures: `textures/items/${contentId}` } };
+      resourceFiles.push(
+        { name: `textures/items/${contentId}.png`, content: textureBytes },
+        { name: 'sounds/sound_definitions.json', content: jsonFile({
+          format_version: '1.14.0',
+          sound_definitions: {
+            [`hefcreative.${contentId}`]: {
+              category: 'record',
+              sounds: [{ name: `sounds/music_disc/${contentId}`, stream: true }]
+            }
+          }
+        }) },
+        { name: `sounds/music_disc/${contentId}.ogg`, content: new Uint8Array(await audioFile.arrayBuffer()) }
+      );
+    }
+    const resourcePack = {
+      format_version: 2,
+      header: { name: `${displayName} — Ressources`, description: `Ressources pour ${displayName}`, uuid: resourceUuid, version, min_engine_version: [1, 20, 80] },
+      modules: [{ description: 'Textures et ressources audio', type: 'resources', uuid: uuid(), version }]
+    };
+    const behaviorPack = {
+      format_version: 2,
+      header: { name: `${displayName} — Comportement`, description: `Contenu Bedrock créé avec HEF Creative`, uuid: behaviorUuid, version, min_engine_version: [1, 20, 80] },
+      modules: [{ description: 'Définitions Bedrock', type: 'data', uuid: uuid(), version }],
+      dependencies: [{ uuid: resourceUuid, version }]
+    };
+    const behaviorPackFiles = [
+      { name: 'manifest.json', content: jsonFile(behaviorPack) },
+      ...behaviorFiles
+    ];
+    const resourcePackFiles = [
+      { name: 'manifest.json', content: jsonFile(resourcePack) },
+      ...resourceFiles
+    ];
+    if (itemAtlas) resourcePackFiles.push({ name: 'textures/item_texture.json', content: jsonFile({ resource_pack_name: displayName, texture_name: 'atlas.items', texture_data: itemAtlas }) });
+    if (kind === 'entity') resourcePackFiles.push({ name: `render_controllers/${contentId}.render_controllers.json`, content: jsonFile({
+      format_version: '1.8.0',
+      render_controllers: { [`controller.render.hefcreative.${contentId}`]: { geometry: 'Geometry.default', materials: [{ '*': 'Material.default' }], textures: ['Texture.default'] } }
+    }) });
+    const baseName = slugify(displayName);
+    return createZip([
+      { name: `${baseName}_BP.mcpack`, content: createZip(behaviorPackFiles) },
+      { name: `${baseName}_RP.mcpack`, content: createZip(resourcePackFiles) },
+      { name: 'README.txt', content: `Contenu Minecraft Bedrock : ${displayName} (${kind}). Ouvrez ce fichier .mcaddon avec Minecraft Bedrock, puis activez les packs de comportement et de ressources dans votre monde.` }
+    ]);
+  }
   addonForm.addEventListener('submit', async event => {
     event.preventDefault();
     if (!addonForm.reportValidity()) return;
     const button = addonForm.querySelector('[type="submit"]');
-    const status = doc.querySelector('#addon-status');
+    const status = addonStatus;
     button.disabled = true;
     status.textContent = 'Préparation de votre pack Minecraft…';
     try {
       const displayName = addonName.value.trim();
-      const itemId = slugify(addonId.value);
+      const kind = addonKind.value;
+      const contentId = slugify(addonId.value.split(':').pop());
       const resourceUuid = uuid();
       const behaviorUuid = uuid();
       const version = [1, 0, 0];
       const textureBytes = importedTexture
         ? new Uint8Array(await (await fetch(importedTexture)).arrayBuffer())
         : await canvasPng(addonCanvas);
-      const resourcePack = {
-        format_version: 2,
-        header: { name: `${displayName} — Ressources`, description: 'Texture créée avec HEF Creative', uuid: resourceUuid, version, min_engine_version: [1, 20, 0] },
-        modules: [{ description: 'Textures et atlas de l’objet', type: 'resources', uuid: uuid(), version }]
-      };
-      const behaviorPack = {
-        format_version: 2,
-        header: { name: `${displayName} — Comportement`, description: 'Objet créé avec HEF Creative', uuid: behaviorUuid, version, min_engine_version: [1, 20, 0] },
-        modules: [{ description: 'Définition de l’objet', type: 'data', uuid: uuid(), version }],
-        dependencies: [{ uuid: resourceUuid, version }]
-      };
-      const item = {
-        format_version: '1.20.80',
-        'minecraft:item': {
-          description: { identifier: `hefcreative:${itemId}`, menu_category: { category: 'items' } },
-          components: {
-            'minecraft:display_name': { value: displayName },
-            'minecraft:icon': itemId,
-            'minecraft:max_stack_size': Number(doc.querySelector('#addon-stack').value),
-            'minecraft:hand_equipped': doc.querySelector('#addon-hand').checked
-          }
-        }
-      };
-      const textureAtlas = {
-        resource_pack_name: displayName,
-        texture_name: 'atlas.items',
-        texture_data: { [itemId]: { textures: `textures/items/${itemId}` } }
-      };
+      const archive = await createAddonFiles({
+        displayName,
+        contentId,
+        kind,
+        textureBytes,
+        resourceUuid,
+        behaviorUuid,
+        version,
+        audioFile: importedAudio
+      });
       const baseName = slugify(displayName);
-      const archive = createZip([
-        { name: `${baseName}_BP/manifest.json`, content: jsonFile(behaviorPack) },
-        { name: `${baseName}_BP/items/${itemId}.json`, content: jsonFile(item) },
-        { name: `${baseName}_RP/manifest.json`, content: jsonFile(resourcePack) },
-        { name: `${baseName}_RP/textures/item_texture.json`, content: jsonFile(textureAtlas) },
-        { name: `${baseName}_RP/textures/items/${itemId}.png`, content: textureBytes },
-        { name: 'README.txt', content: 'Ouvrez ce fichier .mcaddon avec Minecraft Bedrock pour importer les packs. Activez le pack de comportement et le pack de ressources dans les paramètres de votre monde.' }
-      ]);
       downloadFile(archive, `${baseName}.mcaddon`, 'application/zip');
-      status.textContent = `${displayName}.mcaddon est prêt. Ouvrez-le avec Minecraft Bedrock pour importer votre objet.`;
+      status.textContent = `${displayName}.mcaddon est prêt. Ouvrez-le avec Minecraft Bedrock pour importer ${kind === 'music-disc' ? 'votre disque musical' : kind === 'entity' ? 'votre entité' : kind === 'recipe' ? 'votre recette' : kind === 'block' ? 'votre bloc' : 'votre objet'}.`;
     } catch (error) {
       console.error(error);
-      status.textContent = 'L’export a échoué. Vérifiez que le navigateur autorise les téléchargements et réessayez.';
+      status.textContent = `L’export a échoué : ${error.message || 'vérifiez que le navigateur autorise les téléchargements et réessayez.'}`;
     } finally {
       button.disabled = false;
     }
   });
   addonForm.addEventListener('input', () => { if (!importedTexture) drawGem(); });
+  updateAddonKind();
   drawGem();
 
   const canvas = doc.querySelector('#drawing-canvas');
