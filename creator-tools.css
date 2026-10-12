@@ -267,3 +267,132 @@ aside #creative-tools-nav > button[aria-current="page"] > span {
     width: auto;
   }
 }
+
+.desk-home-icon {
+  display: none;
+}
+
+@media (max-width: 480px) {
+  .desk-tabs .desk-home-icon {
+    display: inline;
+  }
+
+  .desk-tabs .desk-home-label {
+    display: none;
+  }
+}
+
+.brush-library {
+  position: fixed;
+  z-index: 10;
+  top: 48px;
+  right: 50px;
+  width: min(260px, calc(100vw - 90px));
+  padding: 14px;
+  border: 1px solid #404045;
+  border-radius: 7px;
+  color: #e8e8eb;
+  background: #252528;
+  box-shadow: 0 8px 24px #0008;
+}
+
+.brush-library[hidden] {
+  display: none;
+}
+
+.brush-library > strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.brush-presets {
+  display: grid;
+  gap: 5px;
+}
+
+.brush-presets button {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #d4d3d8;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-size: 11px;
+}
+
+.brush-presets button:hover,
+.brush-presets button[aria-pressed="true"] {
+  border-color: #4d747a;
+  background: #30474b;
+}
+
+.brush-sample {
+  display: block;
+  height: 5px;
+  border-radius: 99px;
+  background: #d8e6e4;
+}
+
+.sample-round {
+  opacity: 1;
+}
+
+.sample-pencil {
+  height: 3px;
+  opacity: .72;
+}
+
+.sample-marker {
+  height: 8px;
+  border-radius: 2px;
+  opacity: .55;
+}
+
+.sample-airbrush {
+  height: 9px;
+  background: radial-gradient(ellipse, #d8e6e4 10%, #d8e6e400 75%);
+}
+
+.brush-settings output {
+  justify-self: end;
+  color: #aab8b2;
+}
+
+.brush-settings .brush-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-cell.is-keyframe::after {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 7px;
+  height: 7px;
+  background: #d9f08c;
+  content: "";
+  transform: rotate(45deg);
+}
+
+.frame-commands .motion-tween-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  color: #d6d5d9;
+  cursor: pointer;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.motion-tween-control input {
+  accent-color: #8ab1a8;
+}
+.animation-open .layer-label.is-selected{outline:1px solid #648f94;outline-offset:-1px;background:#292c32}.animation-open .ruler-tick.has-marker{border-bottom:2px solid #dda94c;color:#ffdc86}.animation-open .layer-visibility{color:#aaa}.animation-open .desk-properties-dialog,.animation-open .desk-markers-dialog,.animation-open .desk-symbols-dialog{width:min(390px,calc(100% - 28px));max-height:min(80vh,620px);padding:16px;border:1px solid #4a4a52;border-radius:9px;color:#eee;background:#24252a;box-shadow:0 16px 60px #0009}.animation-open .desk-properties-dialog::backdrop,.animation-open .desk-markers-dialog::backdrop,.animation-open .desk-symbols-dialog::backdrop{background:#0009;backdrop-filter:blur(3px)}.animation-open .desk-properties-dialog form,.animation-open .desk-markers-dialog form,.animation-open .desk-symbols-dialog form{display:grid;gap:12px}.animation-open .desk-properties-dialog header,.animation-open .desk-markers-dialog header,.animation-open .desk-symbols-dialog header{display:flex;align-items:center;justify-content:space-between;gap:10px}.animation-open .desk-properties-dialog h2,.animation-open .desk-markers-dialog h2,.animation-open .desk-symbols-dialog h2{margin:0;font-size:16px}.animation-open .desk-properties-dialog label,.animation-open .desk-markers-dialog label{display:grid;gap:5px;color:#c9c8ce;font-size:12px}.animation-open .desk-properties-dialog input:not([type=checkbox]),.animation-open .desk-properties-dialog select,.animation-open .desk-markers-dialog input{width:100%;min-height:30px;padding:5px 8px;border:1px solid #484950;border-radius:5px;color:#eee;background:#303138}.animation-open .desk-properties-dialog .property-check{display:flex;align-items:center;gap:7px}.animation-open .desk-property-save,.animation-open .marker-dialog-actions button,.animation-open .symbol-row button,.animation-open .marker-row button{min-height:29px;padding:4px 9px;border:1px solid #505159;border-radius:5px;color:#eee;background:#32343b;cursor:pointer;font-size:11px}.animation-open .marker-dialog-actions,.animation-open .marker-row,.animation-open .symbol-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.animation-open #marker-list,.animation-open #symbol-list{display:grid;max-height:42vh;gap:7px;overflow:auto}.animation-open .desk-markers-dialog header>button,.animation-open .desk-symbols-dialog header>button,.animation-open .desk-properties-dialog header>button{border:0;color:#eee;background:transparent;cursor:pointer;font-size:20px}.animation-open .desk-action-menu{z-index:5;max-height:70vh;overflow:auto}.animation-open .desk-action-menu hr{border-color:#45464e}
