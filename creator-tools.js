@@ -137,7 +137,6 @@
         <nav class="desk-tabs" aria-label="Navigation Animation Desk"><button type="button" id="projects-tab">Projects</button><button type="button" id="library-tab">Library</button><button type="button" id="actions-tab" aria-expanded="false">Actions</button></nav>
         <span class="desk-document-name">Sans titre <span>●</span></span>
         <div class="desk-top-controls"><button class="desk-icon" type="button" id="play-animation" aria-label="Lire l’animation" title="Lire">▶</button><label title="Taille du pinceau"><input id="brush-size" type="range" min="1" max="28" value="5"><output id="brush-size-value">5</output></label><label title="Zoom de la scène"><input id="zoom-control" type="range" min="50" max="150" value="100"></label><button class="desk-export" id="export-video" type="button">Exporter</button></div>
-        <input class="visually-hidden" id="library-import" type="file" accept="image/png,image/jpeg,image/webp">
       </header>
       <div class="desk-workspace">
         <nav class="desk-tool-rail" aria-label="Outils de dessin">
@@ -146,7 +145,7 @@
         </nav>
         <div class="desk-stage-column">
           <div class="desk-canvas-area"><div class="canvas-matte"><canvas id="drawing-canvas" width="640" height="400" aria-label="Zone de dessin de l’image courante" role="img"></canvas></div></div>
-          <div class="desk-stage-bar"><div class="stage-transport"><button id="previous-frame" type="button" title="Image précédente" aria-label="Image précédente">|◀</button><button id="stage-onion" type="button" aria-pressed="true" title="Pelure d’oignon" aria-label="Pelure d’oignon">◐</button><button id="loop-playback" type="button" aria-pressed="true" title="Lecture en boucle" aria-label="Lecture en boucle">⟳</button><button id="next-frame" type="button" title="Image suivante" aria-label="Image suivante">▶|</button></div><span>Scène 1</span><label>FPS <select id="animation-fps"><option>4</option><option>8</option><option>12</option><option selected>24</option></select></label><span id="animation-status" role="status" aria-live="polite">Prêt</span></div>
+          <div class="desk-stage-bar"><div class="stage-left-controls"><button id="previous-frame" type="button" title="Image précédente" aria-label="Image précédente">|◀</button><button id="next-frame" type="button" title="Image suivante" aria-label="Image suivante">▶|</button><button id="stage-onion" type="button" aria-pressed="true" title="Pelure d’oignon" aria-label="Pelure d’oignon">◐</button><button id="loop-playback" type="button" aria-pressed="true" title="Lecture en boucle" aria-label="Lecture en boucle">⟳</button></div><div class="stage-transport"><button id="stage-to-first" type="button" title="Revenir à la première image" aria-label="Revenir à la première image">≪</button><button id="stage-play" type="button" title="Lire l’animation" aria-label="Lire l’animation">▶</button><button id="stage-to-last" type="button" title="Aller à la dernière image" aria-label="Aller à la dernière image">≫</button></div><span class="stage-scene">Scene 1</span><label class="stage-fps">24 fps <select id="animation-fps" aria-label="Images par seconde"><option>4</option><option>8</option><option>12</option><option>16</option><option selected>24</option></select></label><span id="animation-status" role="status" aria-live="polite">Prêt</span><button id="toggle-timeline-stage" type="button" aria-label="Replier la timeline" title="Replier la timeline">▾</button></div>
         </div>
         <aside class="desk-inspector" aria-label="Réglages"><button type="button" id="color-swatch" title="Choisir une couleur" aria-label="Choisir une couleur"><input id="brush-color" type="color" value="#111111" aria-label="Couleur du pinceau"></button><button type="button" id="toggle-layers" aria-label="Afficher les calques" title="Calques">◆</button><button type="button" id="toggle-settings" aria-label="Réglages du pinceau" title="Réglages">☷</button><div class="brush-settings" id="brush-settings" hidden><label>Taille <output id="brush-size-side">5 px</output><input id="brush-size-side-control" type="range" min="1" max="28" value="5"></label><label class="onion-setting"><input id="onion-skin" type="checkbox" checked> Pelure d’oignon</label><label>Nombre de boucles<select id="loop-count"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option></select></label><label>Nom du fichier<input id="animation-name" type="text" value="mon-animation" maxlength="40"></label></div><label class="visually-hidden">Épaisseur <output id="brush-size-value-accessible">5 px</output></label></aside>
       </div>
@@ -156,31 +155,470 @@
       </section>
       <div class="desk-action-menu" id="desk-action-menu" hidden><button type="button" id="menu-export-video">Exporter la vidéo…</button><button type="button" id="export-frame">Exporter l’image PNG</button><button type="button" id="menu-clear-frame">Effacer l’image courante</button></div>
       <p class="visually-hidden" id="animation-announcer" aria-live="polite"></p>
-    </section>`);
+    </section>
+    <section class="tool-view desk-projects-view" id="desk-projects-view" hidden aria-label="Animation Desk Projects">
+      <header class="desk-topbar"><nav class="desk-tabs" aria-label="Navigation Projects"><button type="button" class="current">Projects</button><button type="button" id="desk-project-library">Library</button><button type="button" id="desk-project-animation">Animation Desk</button></nav><span class="desk-document-name">HEF Creative</span></header>
+      <div class="desk-projects-main">
+        <div class="desk-projects-heading"><h1>Projects</h1><div class="desk-projects-actions"><button type="button" id="desk-project-help">Help</button><label>Sort by <select id="desk-project-sort"><option value="updated">Last modified</option><option value="created">Date created</option><option value="name">Name</option></select></label><button type="button" id="desk-project-select" aria-pressed="false">Select</button><button type="button" id="desk-project-import">Import</button><button type="button" class="desk-project-add" id="desk-project-add" aria-label="Create animation clip" title="Create animation clip">+</button></div></div>
+        <label class="desk-project-search"><span aria-hidden="true">⌕</span><input id="desk-project-search" type="search" placeholder="Search projects" aria-label="Search projects"></label>
+        <div class="desk-project-grid" id="desk-project-grid" aria-live="polite"></div>
+        <section class="desk-project-empty" id="desk-project-empty" hidden><span aria-hidden="true">▧</span><h2>No projects yet</h2><p>Créez une animation pour la retrouver ici.</p><button type="button" id="desk-project-empty-create">Create Animation Clip</button></section>
+        <div class="desk-project-selection" id="desk-project-selection" hidden><span id="desk-project-selection-count">0 selected</span><button type="button" id="desk-project-export-selected">Export</button><button type="button" id="desk-project-delete-selected">Delete</button><button type="button" id="desk-project-selection-done">Done</button></div>
+        <input class="visually-hidden" id="desk-project-import-file" type="file" accept=".hefclip,.json,application/json">
+        <p class="desk-project-status" id="desk-project-status" role="status" aria-live="polite"></p>
+      </div>
+      <dialog class="desk-project-help-dialog" id="desk-project-help-dialog"><div class="library-preview-head"><h2>Animation Desk Projects</h2><button type="button" id="desk-project-help-close" aria-label="Close">×</button></div><p>Vos animations sont enregistrées dans ce navigateur. Créez un clip, dessinez, puis revenez ici pour le rouvrir ou l’exporter.</p><p>Utilisez Import pour charger un fichier HEF Clip au format JSON.</p></dialog>
+    </section>
+    <section class="tool-view library-view" id="library-view" hidden aria-label="Library">
+      <header class="desk-topbar library-topbar"><nav class="desk-tabs" aria-label="Navigation Library"><button type="button" id="library-projects-tab">Projects</button><button type="button" class="current">Library</button><button type="button" id="library-animation-tab">Animation Desk</button></nav><span class="desk-document-name">HEF Creative</span></header>
+      <div class="library-main">
+        <div class="library-heading"><h1>Library</h1><div class="library-tabs" role="tablist" aria-label="Type de média"><button type="button" role="tab" data-library-type="clips" aria-selected="true">Animation Clips</button><button type="button" role="tab" data-library-type="videos" aria-selected="false">Videos</button><button type="button" role="tab" data-library-type="audio" aria-selected="false">Audio Clips</button></div><div class="library-actions"><label class="library-sort">Sort by <select id="library-sort"><option value="newest">Recently added</option><option value="oldest">Oldest first</option><option value="name">Name</option></select></label><button class="library-select" id="library-select" type="button" aria-pressed="false">Select</button><div class="library-add-wrap"><button class="library-add" id="library-add" type="button" aria-label="Ajouter" aria-expanded="false" aria-controls="library-add-menu" title="Ajouter">+</button><div class="library-add-menu" id="library-add-menu" hidden><button type="button" id="create-animation-clip"><span aria-hidden="true">＋</span>Create Animation Clip</button><button type="button" id="import-from-photos"><span aria-hidden="true">▧</span>Import from Photos</button><button type="button" id="import-from-files"><span aria-hidden="true">▰</span>Import from Files</button></div></div></div></div>
+        <label class="library-search"><span aria-hidden="true">⌕</span><input id="library-search" type="search" placeholder="Search" aria-label="Rechercher dans Library"></label>
+        <div class="library-grid" id="library-grid" aria-live="polite"></div>
+        <section class="library-empty" id="library-empty" hidden><span aria-hidden="true">▧</span><h2>No media yet</h2><p>Ajoutez des clips, vidéos ou fichiers audio à votre bibliothèque.</p><button type="button" id="library-empty-add">Ajouter des fichiers</button></section>
+        <div class="library-selection" id="library-selection" hidden><span id="library-selection-count">0 sélectionné</span><button type="button" id="library-delete-selected">Supprimer la sélection</button><button type="button" id="library-done-selecting">Terminé</button></div>
+        <input class="visually-hidden" id="library-file-input" type="file" multiple>
+        <input class="visually-hidden" id="library-photo-input" type="file" accept="image/*" multiple>
+        <p class="library-status" id="library-status" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+    <dialog class="library-preview-dialog" id="library-preview-dialog" aria-labelledby="library-preview-title"><div class="library-preview-head"><h2 id="library-preview-title"></h2><button type="button" id="library-preview-close" aria-label="Fermer">×</button></div><div id="library-preview-content"></div><div class="library-preview-actions"><button type="button" class="library-use-image" id="library-use-image" hidden>Utiliser sur la scène</button><button type="button" id="library-preview-delete">Supprimer</button></div></dialog>`);
+
+  const fpsSelect = doc.querySelector('#animation-fps');
+  fpsSelect.parentElement.firstChild.textContent = '';
+  fpsSelect.after(doc.createTextNode(' fps'));
 
   const projectNav = toolNav.querySelector('[data-view="projects"]');
   const views = {
     projects: projectView,
     addons: doc.querySelector('#addons-view'),
-    animation: doc.querySelector('#animation-view')
+    animation: doc.querySelector('#animation-view'),
+    library: doc.querySelector('#library-view'),
+    deskProjects: doc.querySelector('#desk-projects-view')
   };
   const breadcrumb = main.querySelector('.topline > div');
   function activateView(name) {
-    doc.body.classList.toggle('animation-open', name === 'animation');
+    doc.body.classList.toggle('animation-open', name === 'animation' || name === 'library' || name === 'deskProjects');
+    doc.body.classList.toggle('library-open', name === 'library');
+    doc.body.classList.toggle('desk-projects-open', name === 'deskProjects');
     Object.entries(views).forEach(([key, view]) => { view.hidden = key !== name; });
     toolNav.querySelectorAll('[data-view]').forEach(button => {
       if (button.dataset.view === name) button.setAttribute('aria-current', 'page');
       else button.removeAttribute('aria-current');
     });
-    const titles = { projects: 'Projets', addons: 'Création d’add-on', animation: 'Animation vidéo' };
-    breadcrumb.innerHTML = `Studio <span>/</span> ${titles[name]}`;
+    const titles = { projects: 'Projets', addons: 'Création d’add-on', animation: 'Animation vidéo', library: 'Library', deskProjects: 'Animation Desk Projects' };
+    if (breadcrumb) breadcrumb.innerHTML = `Studio <span>/</span> ${titles[name]}`;
     doc.title = `HEF Creative — ${titles[name]}`;
+    if (name === 'library') renderLibrary();
+    if (name === 'deskProjects') renderDeskProjects();
   }
   toolNav.addEventListener('click', event => {
     const button = event.target.closest('[data-view]');
     if (button) activateView(button.dataset.view);
   });
   projectNav.addEventListener('click', () => activateView('projects'));
+  doc.querySelector('#library-tab').addEventListener('click', () => activateView('library'));
+  doc.querySelector('#library-projects-tab').addEventListener('click', goToDeskProjects);
+  doc.querySelector('#library-animation-tab').addEventListener('click', () => activateView('animation'));
+  doc.querySelector('#projects-tab').addEventListener('click', goToDeskProjects);
+  doc.querySelector('#desk-project-library').addEventListener('click', () => activateView('library'));
+  doc.querySelector('#desk-project-animation').addEventListener('click', () => currentProjectId ? loadDeskProject(currentProjectId) : createAnimationClip());
+
+  const libraryGrid = doc.querySelector('#library-grid');
+  const libraryStatus = doc.querySelector('#library-status');
+  const libraryFileInput = doc.querySelector('#library-file-input');
+  const libraryPhotoInput = doc.querySelector('#library-photo-input');
+  const libraryAddMenu = doc.querySelector('#library-add-menu');
+  const librarySelection = doc.querySelector('#library-selection');
+  const librarySelectionCount = doc.querySelector('#library-selection-count');
+  const libraryPreviewDialog = doc.querySelector('#library-preview-dialog');
+  const deskProjectGrid = doc.querySelector('#desk-project-grid');
+  const deskProjectStatus = doc.querySelector('#desk-project-status');
+  const deskProjectImportInput = doc.querySelector('#desk-project-import-file');
+  let libraryType = 'clips';
+  let libraryItems = [];
+  let librarySelectionMode = false;
+  let selectedLibraryIds = new Set();
+  let libraryDatabasePromise;
+  let libraryObjectUrls = [];
+  let previewObjectUrl = null;
+  let previewAsset = null;
+  let deskProjectSelectionMode = false;
+  let selectedDeskProjectIds = new Set();
+  let deskProjectObjectUrls = [];
+  let currentProjectId = null;
+  let currentProjectName = 'Untitled Clip';
+  let currentProjectCreatedAt = Date.now();
+  let projectSaveTimer = null;
+
+  function openLibraryDatabase() {
+    if (!global.indexedDB) return Promise.reject(new Error('IndexedDB indisponible dans ce navigateur.'));
+    if (libraryDatabasePromise) return libraryDatabasePromise;
+    libraryDatabasePromise = new Promise((resolve, reject) => {
+      const request = global.indexedDB.open('hef-creative-library', 1);
+      request.onupgradeneeded = () => {
+        if (!request.result.objectStoreNames.contains('assets')) request.result.createObjectStore('assets', { keyPath: 'id' });
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return libraryDatabasePromise;
+  }
+  function libraryRequest(mode, operation) {
+    return openLibraryDatabase().then(database => new Promise((resolve, reject) => {
+      const transaction = database.transaction('assets', mode);
+      let request;
+      try { request = operation(transaction.objectStore('assets')); }
+      catch (error) { reject(error); return; }
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+      transaction.onerror = () => reject(transaction.error);
+    }));
+  }
+  const getLibraryAssets = () => libraryRequest('readonly', store => store.getAll());
+  const saveLibraryAsset = asset => libraryRequest('readwrite', store => store.put(asset));
+  const removeLibraryAsset = id => libraryRequest('readwrite', store => store.delete(id));
+  function libraryAccept(type) {
+    return type === 'audio' ? 'audio/*' : type === 'videos' ? 'video/*' : 'video/*,image/gif,image/png,image/jpeg,image/webp';
+  }
+  libraryFileInput.accept = libraryAccept(libraryType);
+  function clearLibraryUrls() {
+    libraryObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    libraryObjectUrls = [];
+  }
+  function setLibraryType(type) {
+    libraryType = type;
+    selectedLibraryIds.clear();
+    doc.querySelectorAll('[data-library-type]').forEach(tab => tab.setAttribute('aria-selected', String(tab.dataset.libraryType === type)));
+    libraryFileInput.accept = libraryAccept(type);
+    renderLibrary();
+  }
+  function updateLibrarySelection() {
+    librarySelection.hidden = !librarySelectionMode;
+    librarySelectionCount.textContent = `${selectedLibraryIds.size} sélectionné${selectedLibraryIds.size === 1 ? '' : 's'}`;
+    doc.querySelector('#library-select').textContent = librarySelectionMode ? 'Cancel' : 'Select';
+    doc.querySelector('#library-select').setAttribute('aria-pressed', String(librarySelectionMode));
+    doc.querySelector('#library-delete-selected').disabled = selectedLibraryIds.size === 0;
+  }
+  async function renderLibrary() {
+    clearLibraryUrls();
+    libraryGrid.replaceChildren();
+    try { libraryItems = await getLibraryAssets(); }
+    catch (error) {
+      libraryStatus.textContent = `La bibliothèque locale n’est pas disponible : ${error.message}`;
+      doc.querySelector('#library-empty').hidden = false;
+      return;
+    }
+    const query = doc.querySelector('#library-search').value.trim().toLocaleLowerCase();
+    const sort = doc.querySelector('#library-sort').value;
+    const filtered = libraryItems.filter(item => item.kind === libraryType && item.name.toLocaleLowerCase().includes(query));
+    filtered.sort((first, second) => sort === 'name' ? first.name.localeCompare(second.name) : sort === 'oldest' ? first.createdAt - second.createdAt : second.createdAt - first.createdAt);
+    doc.querySelector('#library-empty').hidden = filtered.length > 0;
+    libraryStatus.textContent = filtered.length ? `${filtered.length} élément${filtered.length === 1 ? '' : 's'}` : '';
+    filtered.forEach(item => {
+      const card = doc.createElement('article');
+      card.className = `library-entry${selectedLibraryIds.has(item.id) ? ' is-selected' : ''}`;
+      const previewButton = doc.createElement('button');
+      previewButton.type = 'button';
+      previewButton.className = 'library-entry-preview';
+      previewButton.setAttribute('aria-label', `Aperçu : ${item.name}`);
+      const media = doc.createElement('div');
+      media.className = 'library-entry-media';
+      const url = URL.createObjectURL(item.blob);
+      libraryObjectUrls.push(url);
+      if (item.mimeType.startsWith('image/')) {
+        const image = doc.createElement('img');
+        image.src = url;
+        image.alt = '';
+        media.append(image);
+      } else {
+        const glyph = doc.createElement('span');
+        glyph.className = 'library-media-glyph';
+        glyph.textContent = item.kind === 'audio' ? '♫' : '▶';
+        media.append(glyph);
+        if (item.kind === 'clips' || item.kind === 'videos') {
+          const video = doc.createElement('video');
+          video.src = url;
+          video.muted = true;
+          video.preload = 'metadata';
+          media.append(video);
+        }
+      }
+      const details = doc.createElement('span');
+      details.className = 'library-entry-details';
+      const title = doc.createElement('strong');
+      title.textContent = item.name;
+      const meta = doc.createElement('small');
+      meta.textContent = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }).format(item.createdAt);
+      details.append(title, meta);
+      previewButton.append(media, details);
+      previewButton.addEventListener('click', () => {
+        if (librarySelectionMode) {
+          if (selectedLibraryIds.has(item.id)) selectedLibraryIds.delete(item.id);
+          else selectedLibraryIds.add(item.id);
+          renderLibrary();
+          updateLibrarySelection();
+        } else openLibraryPreview(item);
+      });
+      card.append(previewButton);
+      if (librarySelectionMode) {
+        const checkbox = doc.createElement('input');
+        checkbox.className = 'library-entry-check';
+        checkbox.type = 'checkbox';
+        checkbox.checked = selectedLibraryIds.has(item.id);
+        checkbox.setAttribute('aria-label', `Sélectionner ${item.name}`);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedLibraryIds.add(item.id);
+          else selectedLibraryIds.delete(item.id);
+          card.classList.toggle('is-selected', checkbox.checked);
+          updateLibrarySelection();
+        });
+        card.append(checkbox);
+      }
+      libraryGrid.append(card);
+    });
+    updateLibrarySelection();
+  }
+  function openLibraryPreview(item) {
+    previewAsset = item;
+    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = URL.createObjectURL(item.blob);
+    const content = doc.querySelector('#library-preview-content');
+    content.replaceChildren();
+    doc.querySelector('#library-preview-title').textContent = item.name;
+    const media = doc.createElement(item.mimeType.startsWith('audio/') ? 'audio' : item.mimeType.startsWith('video/') ? 'video' : 'img');
+    media.src = previewObjectUrl;
+    if (media.tagName === 'IMG') media.alt = item.name;
+    else { media.controls = true; media.autoplay = false; }
+    content.append(media);
+    doc.querySelector('#library-use-image').hidden = !item.mimeType.startsWith('image/');
+    libraryPreviewDialog.showModal();
+  }
+  async function addLibraryFiles(files, targetType = libraryType) {
+    const fileList = [...files];
+    if (!fileList.length) return;
+    libraryStatus.textContent = 'Ajout des fichiers…';
+    try {
+      for (const file of fileList) {
+        const expected = targetType === 'audio' ? file.type.startsWith('audio/') : targetType === 'videos' ? file.type.startsWith('video/') : file.type.startsWith('video/') || file.type.startsWith('image/');
+        if (!expected) continue;
+        await saveLibraryAsset({ id: uuid(), kind: targetType, name: file.name, mimeType: file.type || 'application/octet-stream', blob: file, createdAt: Date.now() });
+      }
+      libraryStatus.textContent = 'Fichiers ajoutés à la bibliothèque.';
+      if (targetType !== libraryType) setLibraryType(targetType);
+      else await renderLibrary();
+    } catch (error) {
+      libraryStatus.textContent = `Impossible d’enregistrer les fichiers : ${error.message}`;
+    } finally {
+      libraryFileInput.value = '';
+    }
+  }
+  function closeLibraryAddMenu() {
+    libraryAddMenu.hidden = true;
+    doc.querySelector('#library-add').setAttribute('aria-expanded', 'false');
+  }
+  doc.querySelector('#library-add').addEventListener('click', () => {
+    libraryAddMenu.hidden = !libraryAddMenu.hidden;
+    doc.querySelector('#library-add').setAttribute('aria-expanded', String(!libraryAddMenu.hidden));
+  });
+  doc.addEventListener('pointerdown', event => {
+    if (!event.target.closest('.library-add-wrap')) closeLibraryAddMenu();
+  });
+  doc.addEventListener('keydown', event => { if (event.key === 'Escape') closeLibraryAddMenu(); });
+  doc.querySelector('#create-animation-clip').addEventListener('click', () => {
+    closeLibraryAddMenu();
+    createAnimationClip();
+  });
+  doc.querySelector('#import-from-photos').addEventListener('click', () => {
+    closeLibraryAddMenu();
+    libraryPhotoInput.click();
+  });
+  doc.querySelector('#import-from-files').addEventListener('click', () => {
+    closeLibraryAddMenu();
+    libraryFileInput.accept = libraryAccept(libraryType);
+    libraryFileInput.click();
+  });
+  libraryPhotoInput.addEventListener('change', event => addLibraryFiles(event.target.files, 'clips'));
+  async function deleteLibraryItem(id) {
+    await removeLibraryAsset(id);
+    selectedLibraryIds.delete(id);
+    if (previewAsset?.id === id) libraryPreviewDialog.close();
+    await renderLibrary();
+  }
+  function clearDeskProjectUrls() {
+    deskProjectObjectUrls.forEach(url => URL.revokeObjectURL(url));
+    deskProjectObjectUrls = [];
+  }
+  function updateDeskProjectSelection() {
+    const selection = doc.querySelector('#desk-project-selection');
+    selection.hidden = !deskProjectSelectionMode;
+    doc.querySelector('#desk-project-selection-count').textContent = `${selectedDeskProjectIds.size} selected`;
+    const selectButton = doc.querySelector('#desk-project-select');
+    selectButton.textContent = deskProjectSelectionMode ? 'Cancel' : 'Select';
+    selectButton.setAttribute('aria-pressed', String(deskProjectSelectionMode));
+    doc.querySelector('#desk-project-export-selected').disabled = selectedDeskProjectIds.size !== 1;
+    doc.querySelector('#desk-project-delete-selected').disabled = selectedDeskProjectIds.size === 0;
+  }
+  async function renderDeskProjects() {
+    clearDeskProjectUrls();
+    deskProjectGrid.replaceChildren();
+    let projects;
+    try { projects = (await getLibraryAssets()).filter(item => item.kind === 'desk-project'); }
+    catch (error) {
+      deskProjectStatus.textContent = `Projects storage is unavailable: ${error.message}`;
+      doc.querySelector('#desk-project-empty').hidden = false;
+      return;
+    }
+    const query = doc.querySelector('#desk-project-search').value.trim().toLocaleLowerCase();
+    const sort = doc.querySelector('#desk-project-sort').value;
+    projects = projects.filter(project => project.name.toLocaleLowerCase().includes(query));
+    projects.sort((first, second) => sort === 'name' ? first.name.localeCompare(second.name) : sort === 'created' ? first.createdAt - second.createdAt : second.updatedAt - first.updatedAt);
+    const empty = doc.querySelector('#desk-project-empty');
+    empty.hidden = projects.length > 0;
+    empty.querySelector('h2').textContent = query ? 'No projects found' : 'No projects yet';
+    empty.querySelector('p').textContent = query ? 'Essayez un autre nom de projet.' : 'Créez une animation pour la retrouver ici.';
+    doc.querySelector('#desk-project-empty-create').hidden = Boolean(query);
+    deskProjectStatus.textContent = projects.length ? `${projects.length} project${projects.length === 1 ? '' : 's'}` : '';
+    projects.forEach(project => {
+      const card = doc.createElement('article');
+      card.className = `desk-project-card${selectedDeskProjectIds.has(project.id) ? ' is-selected' : ''}`;
+      const open = doc.createElement('button');
+      open.type = 'button';
+      open.className = 'desk-project-card-open';
+      open.setAttribute('aria-label', `Open ${project.name}`);
+      const preview = doc.createElement('div');
+      preview.className = 'desk-project-preview';
+      if (project.preview instanceof Blob) {
+        const image = doc.createElement('img');
+        image.src = URL.createObjectURL(project.preview);
+        image.alt = '';
+        deskProjectObjectUrls.push(image.src);
+        preview.append(image);
+      } else {
+        const label = doc.createElement('span');
+        label.textContent = '▶';
+        preview.append(label);
+      }
+      const details = doc.createElement('span');
+      details.className = 'desk-project-details';
+      const title = doc.createElement('strong');
+      title.textContent = project.name;
+      const metadata = doc.createElement('small');
+      metadata.textContent = `${project.width || 640} × ${project.height || 400} px · ${project.fps || 24} fps`;
+      details.append(title, metadata);
+      open.append(preview, details);
+      open.addEventListener('click', () => {
+        if (deskProjectSelectionMode) {
+          if (selectedDeskProjectIds.has(project.id)) selectedDeskProjectIds.delete(project.id);
+          else selectedDeskProjectIds.add(project.id);
+          renderDeskProjects();
+        } else loadDeskProject(project.id);
+      });
+      card.append(open);
+      if (deskProjectSelectionMode) {
+        const checkbox = doc.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'desk-project-check';
+        checkbox.checked = selectedDeskProjectIds.has(project.id);
+        checkbox.setAttribute('aria-label', `Select ${project.name}`);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedDeskProjectIds.add(project.id);
+          else selectedDeskProjectIds.delete(project.id);
+          card.classList.toggle('is-selected', checkbox.checked);
+          updateDeskProjectSelection();
+        });
+        card.append(checkbox);
+      }
+      deskProjectGrid.append(card);
+    });
+    updateDeskProjectSelection();
+  }
+  doc.querySelector('#desk-project-add').addEventListener('click', () => createAnimationClip());
+  doc.querySelector('#desk-project-empty-create').addEventListener('click', () => createAnimationClip());
+  doc.querySelector('#desk-project-help').addEventListener('click', () => doc.querySelector('#desk-project-help-dialog').showModal());
+  doc.querySelector('#desk-project-help-close').addEventListener('click', () => doc.querySelector('#desk-project-help-dialog').close());
+  doc.querySelector('#desk-project-select').addEventListener('click', () => {
+    deskProjectSelectionMode = !deskProjectSelectionMode;
+    selectedDeskProjectIds.clear();
+    renderDeskProjects();
+  });
+  doc.querySelector('#desk-project-selection-done').addEventListener('click', () => {
+    deskProjectSelectionMode = false;
+    selectedDeskProjectIds.clear();
+    renderDeskProjects();
+  });
+  doc.querySelector('#desk-project-search').addEventListener('input', renderDeskProjects);
+  doc.querySelector('#desk-project-sort').addEventListener('change', renderDeskProjects);
+  doc.querySelector('#desk-project-export-selected').addEventListener('click', async () => {
+    if (selectedDeskProjectIds.size !== 1) return;
+    const project = (await getLibraryAssets()).find(item => item.id === [...selectedDeskProjectIds][0]);
+    if (project) downloadDeskProject(project);
+  });
+  doc.querySelector('#desk-project-delete-selected').addEventListener('click', async () => {
+    const removedCurrentProject = selectedDeskProjectIds.has(currentProjectId);
+    for (const id of selectedDeskProjectIds) await removeLibraryAsset(id);
+    if (removedCurrentProject) {
+      currentProjectId = null;
+      currentProjectName = 'Untitled Clip';
+      currentProjectCreatedAt = Date.now();
+    }
+    selectedDeskProjectIds.clear();
+    await renderDeskProjects();
+  });
+  doc.querySelector('#desk-project-import').addEventListener('click', () => deskProjectImportInput.click());
+  deskProjectImportInput.addEventListener('change', importDeskProjectFile);
+  doc.querySelectorAll('[data-library-type]').forEach(tab => tab.addEventListener('click', () => setLibraryType(tab.dataset.libraryType)));
+  doc.querySelector('#library-empty-add').addEventListener('click', () => {
+    libraryAddMenu.hidden = false;
+    doc.querySelector('#library-add').setAttribute('aria-expanded', 'true');
+  });
+  libraryFileInput.addEventListener('change', event => addLibraryFiles(event.target.files));
+  doc.querySelector('#library-search').addEventListener('input', renderLibrary);
+  doc.querySelector('#library-sort').addEventListener('change', renderLibrary);
+  doc.querySelector('#library-select').addEventListener('click', () => {
+    librarySelectionMode = !librarySelectionMode;
+    selectedLibraryIds.clear();
+    updateLibrarySelection();
+    renderLibrary();
+  });
+  doc.querySelector('#library-done-selecting').addEventListener('click', () => {
+    librarySelectionMode = false;
+    selectedLibraryIds.clear();
+    updateLibrarySelection();
+    renderLibrary();
+  });
+  doc.querySelector('#library-delete-selected').addEventListener('click', async () => {
+    const ids = [...selectedLibraryIds];
+    for (const id of ids) await removeLibraryAsset(id);
+    selectedLibraryIds.clear();
+    await renderLibrary();
+  });
+  doc.querySelector('#library-preview-close').addEventListener('click', () => libraryPreviewDialog.close());
+  libraryPreviewDialog.addEventListener('close', () => {
+    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+    previewObjectUrl = null;
+    previewAsset = null;
+  });
+  doc.querySelector('#library-preview-delete').addEventListener('click', async () => {
+    if (previewAsset) await deleteLibraryItem(previewAsset.id);
+  });
+  doc.querySelector('#library-use-image').addEventListener('click', async () => {
+    if (!previewAsset || !previewAsset.mimeType.startsWith('image/')) return;
+    const bitmap = await createImageBitmap(previewAsset.blob);
+    activateView('animation');
+    rememberForUndo();
+    draftContext.clearRect(0, 0, frameWidth, frameHeight);
+    const scale = Math.min(frameWidth / bitmap.width, frameHeight / bitmap.height);
+    const width = bitmap.width * scale;
+    const height = bitmap.height * scale;
+    draftContext.drawImage(bitmap, (frameWidth - width) / 2, (frameHeight - height) / 2, width, height);
+    bitmap.close();
+    saveActiveFrame();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    libraryPreviewDialog.close();
+  });
 
   const slugify = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32) || 'nouvel_objet';
   const addonCanvas = doc.querySelector('#addon-preview');
@@ -355,6 +793,179 @@
   let recording = false;
   let paintStart = null;
 
+  function currentProjectRecord(preview = null) {
+    saveActiveFrame();
+    return {
+      id: currentProjectId || (currentProjectId = uuid()),
+      kind: 'desk-project',
+      name: currentProjectName,
+      createdAt: currentProjectCreatedAt,
+      updatedAt: Date.now(),
+      width: frameWidth,
+      height: frameHeight,
+      fps: Number(doc.querySelector('#animation-fps').value),
+      frameCount,
+      activeLayerId,
+      layers: layers.map(layer => ({
+        id: layer.id,
+        name: layer.name,
+        visible: layer.visible,
+        locked: layer.locked,
+        frames: layer.frames.slice(0, frameCount).map(frame => frame ? new Uint8ClampedArray(frame.data) : null)
+      })),
+      preview
+    };
+  }
+  async function saveCurrentProject() {
+    clearTimeout(projectSaveTimer);
+    if (playbackTimer) stopPlayback();
+    paintFrame(activeFrame, false);
+    const preview = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    paintFrame(activeFrame);
+    const project = currentProjectRecord(preview);
+    await saveLibraryAsset(project);
+    currentProjectCreatedAt = project.createdAt;
+    return project;
+  }
+  function scheduleProjectSave() {
+    clearTimeout(projectSaveTimer);
+    projectSaveTimer = setTimeout(() => {
+      saveCurrentProject().catch(error => {
+        deskProjectStatus.textContent = `Autosave unavailable: ${error.message}`;
+      });
+    }, 450);
+  }
+  function goToDeskProjects() {
+    saveCurrentProject()
+      .catch(error => { deskProjectStatus.textContent = `Project could not be saved: ${error.message}`; })
+      .finally(() => activateView('deskProjects'));
+  }
+  function createAnimationClip() {
+    const requestedName = global.prompt('Nom du projet Animation Desk', 'Untitled Clip');
+    if (requestedName === null) return;
+    const name = requestedName.trim() || 'Untitled Clip';
+    const start = async () => {
+      if (currentProjectId) await saveCurrentProject();
+      if (playbackTimer) stopPlayback();
+      currentProjectId = uuid();
+      currentProjectName = name;
+      currentProjectCreatedAt = Date.now();
+      frameCount = 1;
+      layers.forEach(layer => {
+        layer.frames = [null];
+        layer.visible = true;
+      });
+      undoStacks = [[]];
+      activeFrame = 0;
+      activeLayerId = 'layer-2';
+      draftContext.clearRect(0, 0, frameWidth, frameHeight);
+      loadDraft();
+      doc.querySelector('.desk-document-name').firstChild.textContent = name;
+      doc.querySelector('#animation-status').textContent = 'Nouveau clip prêt à dessiner.';
+      activateView('animation');
+      refreshTimeline();
+      paintFrame(activeFrame);
+      await saveCurrentProject();
+    };
+    start().catch(error => { deskProjectStatus.textContent = `Le projet n’a pas pu être créé : ${error.message}`; });
+  }
+  function encodePixels(pixels) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < pixels.length; offset += chunkSize) binary += String.fromCharCode(...pixels.subarray(offset, offset + chunkSize));
+    return global.btoa(binary);
+  }
+  function decodePixels(encoded) {
+    const binary = global.atob(encoded);
+    if (binary.length !== frameWidth * frameHeight * 4) throw new Error('La taille d’image du clip est invalide.');
+    const pixels = new Uint8ClampedArray(binary.length);
+    for (let index = 0; index < binary.length; index += 1) pixels[index] = binary.charCodeAt(index);
+    return pixels;
+  }
+  function downloadDeskProject(project) {
+    const portable = {
+      format: 'hef-creative-clip',
+      version: 1,
+      name: project.name,
+      width: project.width,
+      height: project.height,
+      fps: project.fps,
+      frameCount: project.frameCount,
+      activeLayerId: project.activeLayerId,
+      layers: project.layers.map(layer => ({
+        id: layer.id,
+        name: layer.name,
+        visible: layer.visible,
+        locked: layer.locked,
+        frames: layer.frames.map(frame => frame ? encodePixels(frame instanceof Uint8ClampedArray ? frame : frame.data) : null)
+      }))
+    };
+    downloadFile(JSON.stringify(portable), `${slugify(project.name)}.hefclip`, 'application/json');
+  }
+  async function importDeskProjectFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const portable = JSON.parse(await file.text());
+      if (portable.format !== 'hef-creative-clip' || portable.version !== 1 || !Array.isArray(portable.layers)) throw new Error('Choisissez un fichier HEF Clip valide.');
+      const count = Math.max(1, Math.min(240, Number(portable.frameCount) || 1));
+      const importedLayers = portable.layers.slice(0, 30).map(layer => ({
+        id: String(layer.id || uuid()),
+        name: String(layer.name || 'Layer'),
+        visible: layer.visible !== false,
+        locked: Boolean(layer.locked),
+        frames: Array.from({ length: count }, (_, index) => layer.frames?.[index] ? decodePixels(layer.frames[index]) : null)
+      }));
+      const project = {
+        id: uuid(), kind: 'desk-project', name: String(portable.name || file.name.replace(/\.(hefclip|json)$/i, '')),
+        createdAt: Date.now(), updatedAt: Date.now(), width: frameWidth, height: frameHeight,
+        fps: Number(portable.fps) || 24, frameCount: count,
+        activeLayerId: importedLayers.find(layer => layer.id === portable.activeLayerId && !layer.locked)?.id || importedLayers.find(layer => !layer.locked)?.id,
+        layers: importedLayers, preview: null
+      };
+      if (!project.layers.length) throw new Error('Le clip ne contient aucun calque.');
+      await saveLibraryAsset(project);
+      deskProjectStatus.textContent = `${project.name} importé.`;
+      await renderDeskProjects();
+    } catch (error) {
+      deskProjectStatus.textContent = `Import impossible : ${error.message}`;
+    } finally {
+      deskProjectImportInput.value = '';
+    }
+  }
+  async function loadDeskProject(id) {
+    if (currentProjectId && currentProjectId !== id) await saveCurrentProject();
+    const project = (await getLibraryAssets()).find(item => item.id === id && item.kind === 'desk-project');
+    if (!project) { deskProjectStatus.textContent = 'Projet introuvable.'; return; }
+    frameCount = Math.max(1, Number(project.frameCount) || 1);
+    layers = project.layers.map(layer => ({
+      id: layer.id,
+      name: layer.name,
+      visible: layer.visible,
+      locked: layer.locked,
+      frames: Array.from({ length: frameCount }, (_, index) => {
+        const pixels = layer.frames[index];
+        if (!pixels) return null;
+        const data = context.createImageData(frameWidth, frameHeight);
+        data.data.set(pixels instanceof Uint8ClampedArray ? pixels : pixels.data);
+        return data;
+      })
+    }));
+    currentProjectId = project.id;
+    currentProjectName = project.name;
+    currentProjectCreatedAt = project.createdAt;
+    activeLayerId = layers.find(layer => layer.id === project.activeLayerId && !layer.locked)?.id || layers.find(layer => !layer.locked)?.id;
+    activeFrame = 0;
+    undoStacks = Array.from({ length: frameCount }, () => []);
+    doc.querySelector('#animation-fps').value = String(project.fps || 24);
+    doc.querySelector('.desk-document-name').firstChild.textContent = currentProjectName;
+    loadDraft();
+    activateView('animation');
+    refreshTimeline();
+    paintFrame(activeFrame);
+    doc.querySelector('#animation-status').textContent = 'Projet ouvert.';
+  }
+
   function activeLayer() { return layers.find(layer => layer.id === activeLayerId); }
   function cloneImageData(imageData) {
     const copy = context.createImageData(frameWidth, frameHeight);
@@ -426,6 +1037,7 @@
         loadDraft();
         paintFrame(activeFrame);
         refreshTimeline();
+        scheduleProjectSave();
       });
       const visibility = doc.createElement('button');
       visibility.type = 'button';
@@ -438,6 +1050,7 @@
         layer.visible = !layer.visible;
         paintFrame(activeFrame);
         refreshTimeline();
+        scheduleProjectSave();
       });
       label.append(choose, visibility);
       if (!layer.locked) {
@@ -454,6 +1067,7 @@
           loadDraft();
           paintFrame(activeFrame);
           refreshTimeline();
+          scheduleProjectSave();
         });
         label.append(removeLayer);
       }
@@ -508,6 +1122,7 @@
     saveActiveFrame();
     paintFrame(activeFrame);
     refreshTimeline();
+    scheduleProjectSave();
   }
   canvas.addEventListener('pointerdown', event => {
     if (recording || playbackTimer || activeLayer()?.locked) return;
@@ -527,6 +1142,7 @@
       saveActiveFrame();
       paintFrame(activeFrame);
       refreshTimeline();
+      scheduleProjectSave();
       return;
     }
     if (activeTool === 'text') {
@@ -538,6 +1154,7 @@
         saveActiveFrame();
         paintFrame(activeFrame);
         refreshTimeline();
+        scheduleProjectSave();
       }
       return;
     }
@@ -590,6 +1207,7 @@
     doc.querySelector('#brush-size').value = event.target.value;
     doc.querySelector('#brush-size').dispatchEvent(new Event('input'));
   });
+  doc.querySelector('#animation-fps').addEventListener('change', scheduleProjectSave);
   doc.querySelector('#undo-frame').addEventListener('click', () => {
     const previous = undoStacks[activeFrame].pop();
     if (!previous) return;
@@ -597,6 +1215,7 @@
     saveActiveFrame();
     paintFrame(activeFrame);
     refreshTimeline();
+    scheduleProjectSave();
   });
   doc.querySelector('#clear-frame').addEventListener('click', () => {
     rememberForUndo();
@@ -604,6 +1223,7 @@
     saveActiveFrame();
     paintFrame(activeFrame);
     refreshTimeline();
+    scheduleProjectSave();
   });
   doc.querySelector('#delete-frame').addEventListener('click', () => {
     if (frameCount === 1) return;
@@ -614,6 +1234,7 @@
     loadDraft();
     paintFrame(activeFrame);
     refreshTimeline();
+    scheduleProjectSave();
   });
   function insertFrame(mode) {
     saveActiveFrame();
@@ -628,6 +1249,7 @@
     loadDraft();
     paintFrame(activeFrame);
     refreshTimeline();
+    scheduleProjectSave();
     doc.querySelector('#animation-status').textContent = mode === 'drawing' ? 'Nouveau dessin ajouté.' : mode === 'extend' ? 'Exposition prolongée.' : 'Dessin dupliqué.';
   }
   doc.querySelector('#add-frame').addEventListener('click', () => insertFrame('drawing'));
@@ -642,6 +1264,7 @@
     loadDraft();
     paintFrame(activeFrame);
     refreshTimeline();
+    scheduleProjectSave();
   });
   doc.querySelector('#previous-frame').addEventListener('click', () => selectFrame(Math.max(0, activeFrame - 1)));
   doc.querySelector('#timeline-prev').addEventListener('click', () => selectFrame(Math.max(0, activeFrame - 1)));
@@ -663,30 +1286,22 @@
     doc.querySelector('#desk-timeline').classList.remove('is-collapsed');
   });
   doc.querySelector('#toggle-timeline').addEventListener('click', event => {
+    toggleTimeline(event.currentTarget);
+  });
+  doc.querySelector('#toggle-timeline-stage').addEventListener('click', event => toggleTimeline(event.currentTarget));
+  function toggleTimeline(button) {
     const timeline = doc.querySelector('#desk-timeline');
     timeline.classList.toggle('is-collapsed');
-    event.currentTarget.textContent = timeline.classList.contains('is-collapsed') ? '⌃' : '⌄';
-  });
+    const collapsed = timeline.classList.contains('is-collapsed');
+    button.textContent = collapsed ? '▴' : '▾';
+    button.setAttribute('aria-label', collapsed ? 'Déplier la timeline' : 'Replier la timeline');
+  }
   doc.querySelector('#zoom-control').addEventListener('input', event => {
     doc.querySelector('.canvas-matte').style.setProperty('--scene-zoom', Number(event.target.value) / 100);
   });
   doc.querySelector('#color-swatch').addEventListener('click', event => {
     if (event.target !== doc.querySelector('#brush-color')) doc.querySelector('#brush-color').click();
   });
-  doc.querySelector('#library-tab').addEventListener('click', () => doc.querySelector('#library-import').click());
-  doc.querySelector('#library-import').addEventListener('change', async event => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const bitmap = await createImageBitmap(file);
-    rememberForUndo();
-    draftContext.drawImage(bitmap, 0, 0, frameWidth, frameHeight);
-    bitmap.close();
-    saveActiveFrame();
-    paintFrame(activeFrame);
-    refreshTimeline();
-    event.target.value = '';
-  });
-  doc.querySelector('#projects-tab').addEventListener('click', () => projectNav.click());
   doc.querySelector('#actions-tab').addEventListener('click', event => {
     const menu = doc.querySelector('#desk-action-menu');
     menu.hidden = !menu.hidden;
@@ -704,19 +1319,24 @@
     saveActiveFrame();
     paintFrame(activeFrame, false);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    if (blob) downloadFile(blob, `image-${activeFrame + 1}.png`, 'image/png');
+    if (blob) {
+      const filename = `image-${activeFrame + 1}.png`;
+      downloadFile(blob, filename, 'image/png');
+      try { await saveLibraryAsset({ id: uuid(), kind: 'clips', name: filename, mimeType: 'image/png', blob, createdAt: Date.now() }); }
+      catch (error) { libraryStatus.textContent = `Image exportée, mais non ajoutée à Library : ${error.message}`; }
+    }
   });
   function stopPlayback() {
     clearInterval(playbackTimer);
     playbackTimer = null;
-    doc.querySelectorAll('#play-animation, #timeline-play').forEach(button => { button.textContent = button.id === 'play-animation' ? '▶' : '▶'; });
+    doc.querySelectorAll('#play-animation, #timeline-play, #stage-play').forEach(button => { button.textContent = '▶'; });
     paintFrame(activeFrame);
   }
   function togglePlayback() {
     if (playbackTimer) { stopPlayback(); return; }
     saveActiveFrame();
     playbackIndex = 0;
-    doc.querySelectorAll('#play-animation, #timeline-play').forEach(button => { button.textContent = '■'; });
+    doc.querySelectorAll('#play-animation, #timeline-play, #stage-play').forEach(button => { button.textContent = '■'; });
     paintFrame(playbackIndex, false);
     playbackTimer = setInterval(() => {
       const nextIndex = playbackIndex + 1;
@@ -729,13 +1349,16 @@
   }
   doc.querySelector('#play-animation').addEventListener('click', togglePlayback);
   doc.querySelector('#timeline-play').addEventListener('click', togglePlayback);
+  doc.querySelector('#stage-play').addEventListener('click', togglePlayback);
+  doc.querySelector('#stage-to-first').addEventListener('click', () => selectFrame(0));
+  doc.querySelector('#stage-to-last').addEventListener('click', () => selectFrame(frameCount - 1));
   doc.querySelector('#loop-playback').addEventListener('click', event => {
     event.currentTarget.setAttribute('aria-pressed', String(event.currentTarget.getAttribute('aria-pressed') !== 'true'));
   });
   async function exportVideo() {
     const status = doc.querySelector('#animation-status');
     if (!global.MediaRecorder || !canvas.captureStream) {
-      status.textContent = 'WebM indisponible dans ce navigateur.';
+      status.textContent = 'L’export MP4 n’est pas disponible dans ce navigateur.';
       return;
     }
     if (recording) return;
@@ -747,10 +1370,10 @@
     output.height = frameHeight;
     const outputContext = output.getContext('2d');
     const stream = output.captureStream(fps);
-    const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'].find(type => global.MediaRecorder.isTypeSupported(type));
+    const mimeType = ['video/mp4;codecs=avc1.42E01E', 'video/mp4;codecs=avc1', 'video/mp4'].find(type => global.MediaRecorder.isTypeSupported(type));
     if (!mimeType) {
       stream.getTracks().forEach(track => track.stop());
-      status.textContent = 'Ce navigateur ne propose aucun encodeur WebM compatible.';
+      status.textContent = 'Ce navigateur ne possède pas d’encodeur MP4 compatible. Essayez un navigateur qui prend en charge MediaRecorder MP4.';
       return;
     }
     const chunks = [];
@@ -767,14 +1390,22 @@
     status.textContent = 'Enregistrement de la séquence…';
     recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
     recorder.onerror = () => { status.textContent = 'L’enregistrement vidéo a rencontré une erreur.'; };
-    recorder.onstop = () => {
+    recorder.onstop = async () => {
       clearInterval(timer);
       stream.getTracks().forEach(track => track.stop());
-      downloadFile(new Blob(chunks, { type: mimeType }), `${filename}.webm`, mimeType);
+      const videoBlob = new Blob(chunks, { type: mimeType });
+      downloadFile(videoBlob, `${filename}.mp4`, mimeType);
+      let libraryMessage = '';
+      try {
+        await saveLibraryAsset({ id: uuid(), kind: 'clips', name: `${filename}.mp4`, mimeType, blob: videoBlob, createdAt: Date.now() });
+        libraryMessage = ' Ajoutée à Library.';
+      } catch (error) {
+        console.warn('Export vidéo non ajouté à Library.', error);
+      }
       recording = false;
       button.disabled = false;
       paintFrame(activeFrame);
-      status.textContent = `Vidéo ${filename}.webm exportée (${frameCount} images, ${fps} images/s).`;
+      status.textContent = `Vidéo ${filename}.mp4 exportée (${frameCount} images, ${fps} images/s).${libraryMessage}`;
     };
     recorder.start();
     function drawExportFrame(index) {
