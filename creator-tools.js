@@ -8,6 +8,38 @@
     for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
     crcTable[index] = value >>> 0;
   }
+  let propertiesLayerId = null;
+  function openLayerProperties(layer = activeLayer()) {
+    if (!layer) return;
+    propertiesLayerId = layer.id;
+    doc.querySelector('#layer-type').value = layer.type || 'pixel';
+    doc.querySelector('#layer-opacity').value = Math.round((layer.opacity ?? 1) * 100);
+    doc.querySelector('#layer-opacity-value').value = `${doc.querySelector('#layer-opacity').value} %`;
+    doc.querySelector('#layer-blend').value = layer.blendMode || 'source-over';
+    doc.querySelector('#layer-muted').checked = Boolean(layer.muted);
+    doc.querySelector('#layer-locked').checked = Boolean(layer.locked);
+    doc.querySelector('#onion-skin-layer').checked = layer.onionSkin !== false;
+    doc.querySelector('#symbol-own-fps').checked = Boolean(layer.ownFps);
+    doc.querySelector('#symbol-fps').value = layer.fps || Number(doc.querySelector('#animation-fps').value);
+    doc.querySelector('#symbol-loop').value = layer.loopMode || 'normal';
+    doc.querySelector('#desk-properties-dialog').showModal();
+  }
+  function makeLayer(name, id = `layer-${uuid()}`) {
+    return {
+      id, name, visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over',
+      type: 'pixel', onionSkin: true, ownFps: false, fps: Number(doc.querySelector('#animation-fps').value),
+      loopMode: 'normal', frames: Array(frameCount).fill(null), keyframes: Array(frameCount).fill(false),
+      motion: Array.from({ length: frameCount }, identityPose)
+    };
+  }
+  function cloneLayer(source, name = `${source.name} copy`) {
+    return {
+      ...source, id: `layer-${uuid()}`, name,
+      frames: source.frames.map(frame => frame ? cloneImageData(frame) : null),
+      keyframes: source.keyframes.slice(),
+      motion: source.motion.map(pose => normalizePose(pose))
+    };
+  }
 
   function crc32(bytes) {
     let value = 0xffffffff;
@@ -147,30 +179,33 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     </section>
     <section class="tool-view animation-view" id="animation-view" hidden aria-label="Animation Desk">
       <header class="desk-topbar">
-        <nav class="desk-tabs" aria-label="Navigation Animation Desk"><button type="button" id="projects-tab">Projects</button><button type="button" id="library-tab">Library</button><button type="button" id="actions-tab" aria-expanded="false">Actions</button></nav>
+        <nav class="desk-tabs" aria-label="Navigation Animation Desk"><button type="button" data-home-view aria-label="Retour à l’accueil" title="Retour à l’accueil"><span class="desk-home-icon" aria-hidden="true">⌂</span><span class="desk-home-label">Accueil</span></button><button type="button" id="projects-tab">Projects</button><button type="button" id="library-tab">Library</button><button type="button" id="actions-tab" aria-expanded="false">Actions</button></nav>
         <span class="desk-document-name">Sans titre <span>●</span></span>
         <div class="desk-top-controls"><button class="desk-icon" type="button" id="play-animation" aria-label="Lire l’animation" title="Lire">▶</button><label title="Taille du pinceau"><input id="brush-size" type="range" min="1" max="28" value="5"><output id="brush-size-value">5</output></label><label title="Zoom de la scène"><input id="zoom-control" type="range" min="50" max="150" value="100"></label><button class="desk-export" id="export-video" type="button">Exporter</button></div>
       </header>
       <div class="desk-workspace">
         <nav class="desk-tool-rail" aria-label="Outils de dessin">
-          <button type="button" data-tool="cursor" title="Pointeur" aria-label="Pointeur">↖</button><button type="button" data-tool="select" title="Sélection" aria-label="Sélection">▧</button><span></span><button class="selected" type="button" data-tool="brush" title="Pinceau" aria-label="Pinceau">╱</button><button type="button" data-tool="erase" title="Gomme" aria-label="Gomme">◩</button><button type="button" data-tool="smudge" title="Flou" aria-label="Flou">✋</button><button type="button" data-tool="fill" title="Remplir le calque" aria-label="Remplir le calque">◒</button><button type="button" data-tool="eyedropper" title="Pipette" aria-label="Pipette">⌖</button><button type="button" data-tool="text" title="Texte" aria-label="Texte">T</button><button type="button" data-tool="pen" title="Trait" aria-label="Trait">／</button>
+          <button type="button" data-tool="cursor" title="Pointeur" aria-label="Pointeur">↖</button><button type="button" data-tool="select" title="Sélection" aria-label="Sélection">▧</button><button type="button" data-tool="transform" title="Glisser pour déplacer, molette pour redimensionner, Maj + molette pour pivoter" aria-label="Transformer le calque">⤧</button><span></span><button class="selected" type="button" data-tool="brush" title="Pinceau" aria-label="Pinceau">╱</button><button type="button" data-tool="erase" title="Gomme" aria-label="Gomme">◩</button><button type="button" data-tool="smudge" title="Flou" aria-label="Flou">✋</button><button type="button" data-tool="fill" title="Remplir le calque" aria-label="Remplir le calque">◒</button><button type="button" data-tool="eyedropper" title="Pipette" aria-label="Pipette">⌖</button><button type="button" data-tool="text" title="Texte" aria-label="Texte">T</button><button type="button" data-tool="path" title="Cliquez pour poser les points du tracé, puis double-cliquez ou appuyez sur Entrée" aria-label="Outil de tracé">／</button>
           <button class="desk-tool-bottom" id="undo-frame" type="button" title="Annuler le dernier trait" aria-label="Annuler">↶</button><button id="clear-frame" type="button" title="Effacer l’image" aria-label="Effacer l’image">⌫</button>
         </nav>
         <div class="desk-stage-column">
           <div class="desk-canvas-area"><div class="canvas-matte"><canvas id="drawing-canvas" width="640" height="400" aria-label="Zone de dessin de l’image courante" role="img"></canvas></div></div>
           <div class="desk-stage-bar"><div class="stage-left-controls"><button id="previous-frame" type="button" title="Image précédente" aria-label="Image précédente">|◀</button><button id="next-frame" type="button" title="Image suivante" aria-label="Image suivante">▶|</button><button id="stage-onion" type="button" aria-pressed="true" title="Pelure d’oignon" aria-label="Pelure d’oignon">◐</button><button id="loop-playback" type="button" aria-pressed="true" title="Lecture en boucle" aria-label="Lecture en boucle">⟳</button></div><div class="stage-transport"><button id="stage-to-first" type="button" title="Revenir à la première image" aria-label="Revenir à la première image">≪</button><button id="stage-play" type="button" title="Lire l’animation" aria-label="Lire l’animation">▶</button><button id="stage-to-last" type="button" title="Aller à la dernière image" aria-label="Aller à la dernière image">≫</button></div><span class="stage-scene">Scene 1</span><label class="stage-fps">24 fps <select id="animation-fps" aria-label="Images par seconde"><option>4</option><option>8</option><option>12</option><option>16</option><option selected>24</option></select></label><span id="animation-status" role="status" aria-live="polite">Prêt</span><button id="toggle-timeline-stage" type="button" aria-label="Replier la timeline" title="Replier la timeline">▾</button></div>
         </div>
-        <aside class="desk-inspector" aria-label="Réglages"><button type="button" id="color-swatch" title="Choisir une couleur" aria-label="Choisir une couleur"><input id="brush-color" type="color" value="#111111" aria-label="Couleur du pinceau"></button><button type="button" id="toggle-layers" aria-label="Afficher les calques" title="Calques">◆</button><button type="button" id="toggle-settings" aria-label="Réglages du pinceau" title="Réglages">☷</button><div class="brush-settings" id="brush-settings" hidden><label>Taille <output id="brush-size-side">5 px</output><input id="brush-size-side-control" type="range" min="1" max="28" value="5"></label><label class="onion-setting"><input id="onion-skin" type="checkbox" checked> Pelure d’oignon</label><label>Nombre de boucles<select id="loop-count"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option></select></label><label>Nom du fichier<input id="animation-name" type="text" value="mon-animation" maxlength="40"></label></div><label class="visually-hidden">Épaisseur <output id="brush-size-value-accessible">5 px</output></label></aside>
+        <aside class="desk-inspector" aria-label="Réglages"><button type="button" id="color-swatch" title="Choisir une couleur" aria-label="Choisir une couleur"><input id="brush-color" type="color" value="#111111" aria-label="Couleur du pinceau"></button><button type="button" id="toggle-brush-library" aria-label="Choisir un pinceau" aria-expanded="false" title="Choisir un pinceau">≋</button><button type="button" id="toggle-layers" aria-label="Afficher les calques" title="Calques">◆</button><button type="button" id="toggle-settings" aria-label="Réglages du pinceau" title="Réglages">☷</button><div class="brush-library" id="brush-library" hidden aria-label="Bibliothèque de pinceaux"><strong>Pinceaux</strong><div class="brush-presets"><button type="button" data-brush="round" aria-pressed="true"><span class="brush-sample sample-round"></span><span>Rond</span></button><button type="button" data-brush="pencil" aria-pressed="false"><span class="brush-sample sample-pencil"></span><span>Crayon</span></button><button type="button" data-brush="marker" aria-pressed="false"><span class="brush-sample sample-marker"></span><span>Marqueur</span></button><button type="button" data-brush="airbrush" aria-pressed="false"><span class="brush-sample sample-airbrush"></span><span>Aérographe</span></button></div></div><div class="brush-settings" id="brush-settings" hidden><label>Taille <output id="brush-size-side">5 px</output><input id="brush-size-side-control" type="range" min="1" max="28" value="5"></label><label>Opacité <output id="brush-opacity-value">100 %</output><input id="brush-opacity" type="range" min="10" max="100" value="100"></label><label class="brush-check"><input id="brush-pressure" type="checkbox"> Pression du stylet</label><label class="onion-setting"><input id="onion-skin" type="checkbox" checked> Pelure d’oignon</label><label>Nombre de boucles<select id="loop-count"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option></select></label><label>Nom du fichier<input id="animation-name" type="text" value="mon-animation" maxlength="40"></label></div><label class="visually-hidden">Épaisseur <output id="brush-size-value-accessible">5 px</output></label></aside>
       </div>
       <section class="desk-timeline" id="desk-timeline" aria-label="Timeline de l’animation">
-        <header class="timeline-topbar"><div class="timeline-top-left"><button type="button" id="toggle-timeline" aria-label="Réduire la timeline" title="Réduire la timeline">⌄</button><strong>Timeline</strong><span id="frame-count">20 images</span></div><div class="timeline-mini-controls"><button type="button" id="timeline-prev" aria-label="Reculer d’une image">◀</button><button type="button" id="timeline-play" aria-label="Lire l’animation">▶</button><button type="button" id="timeline-next" aria-label="Avancer d’une image">▶|</button><label title="Zoom de la timeline"><input id="timeline-scale" type="range" min="42" max="100" value="52"></label></div><span class="scene-info">Scene 1 <span>24 fps</span></span></header>
-        <div class="timeline-body"><div class="layer-column"><div class="layer-column-heading">Calques <button type="button" id="add-layer" title="Ajouter un calque" aria-label="Ajouter un calque">+</button></div><div id="layer-list"></div></div><div class="track-viewport"><div id="frame-ruler"></div><div id="layer-tracks"></div><div class="frame-commands"><button type="button" id="add-frame">＋ Add Drawing</button><button type="button" id="duplicate-frame">⧉ Duplicate</button><button type="button" id="extend-frame">↔ Extend</button><button type="button" id="delete-frame" aria-label="Supprimer l’image sélectionnée">⌫</button></div></div></div>
+        <header class="timeline-topbar"><div class="timeline-top-left"><button type="button" id="toggle-timeline" aria-label="Réduire la timeline" title="Réduire la timeline">⌄</button><strong>Timeline</strong><span id="frame-count">20 images</span></div><div class="timeline-mini-controls"><button type="button" id="timeline-prev" aria-label="Reculer d’une image">◀</button><button type="button" id="timeline-play" aria-label="Lire l’animation">▶</button><button type="button" id="timeline-next" aria-label="Avancer d’une image">▶|</button><button type="button" id="open-markers" title="Rechercher et gérer les marqueurs">Marqueurs</button><select id="motion-easing" aria-label="Courbe d’accélération"><option value="linear">Linéaire</option><option value="hold">Maintien</option><option value="easeIn">Ease In</option><option value="easeOut">Ease Out</option><option value="easeInOut">Ease In Out</option><option value="sine">Sine</option><option value="circular">Circular</option><option value="back">Back</option><option value="elastic">Elastic</option><option value="bounce">Bounce</option><option value="exponential">Exponential</option><option value="cubic">Cubic</option><option value="quartic">Quartic</option><option value="quintic">Quintic</option></select><label title="Zoom de la timeline"><input type="range" min="42" max="100" value="52" id="timeline-scale"></label></div><span class="scene-info">Scene 1 <span>24 fps</span></span></header>
+        <div class="timeline-body"><div class="layer-column"><div class="layer-column-heading">Calques <button type="button" id="add-layer" title="Ajouter un calque" aria-label="Ajouter un calque">+</button></div><div id="layer-list"></div></div><div class="track-viewport"><div id="frame-ruler"></div><div id="layer-tracks"></div><div class="frame-commands"><button type="button" id="add-keyframe" title="Créer une image clé sur le calque actif">◆ Image clé</button><label class="motion-tween-control" title="Interpoler position, taille et rotation entre les images clés"><input id="motion-tween" type="checkbox" checked> Déplacement auto</label><button type="button" id="add-frame">＋ Add Drawing</button><button type="button" id="duplicate-frame">⧉ Duplicate</button><button type="button" id="extend-frame">↔ Extend</button><button type="button" id="delete-frame" aria-label="Supprimer l’image sélectionnée">⌫</button></div></div></div>
       </section>
-      <div class="desk-action-menu" id="desk-action-menu" hidden><button type="button" id="menu-export-video">Exporter la vidéo…</button><button type="button" id="export-frame">Exporter l’image PNG</button><button type="button" id="menu-clear-frame">Effacer l’image courante</button></div>
+      <div class="desk-action-menu" id="desk-action-menu" hidden><button type="button" id="menu-copy-drawing">Copier le dessin</button><button type="button" id="menu-paste-drawing">Coller le dessin</button><button type="button" id="menu-select-all-layers">Sélectionner tous les calques</button><button type="button" id="menu-copy-layer">Copier le calque</button><button type="button" id="menu-paste-layer">Coller le calque</button><button type="button" id="menu-duplicate-layer">Dupliquer le calque</button><button type="button" id="menu-rename-layer">Renommer le calque</button><button type="button" id="menu-lock-layer">Verrouiller / déverrouiller</button><button type="button" id="menu-layer-properties">Propriétés du calque</button><button type="button" id="menu-rasterize-layer">Rasteriser le calque</button><button type="button" id="menu-add-drawing">Ajouter un dessin</button><button type="button" id="menu-split-drawing">Séparer le dessin</button><button type="button" id="menu-create-symbol">Créer un symbole</button><button type="button" id="menu-open-symbols">Symboles</button><button type="button" id="menu-add-marker">Ajouter un marqueur</button><button type="button" id="menu-delete-selection">Supprimer la sélection</button><hr><button type="button" id="menu-export-video">Exporter la vidéo…</button><button type="button" id="export-frame">Exporter l’image PNG</button><button type="button" id="menu-clear-frame">Effacer l’image courante</button></div>
+      <dialog class="desk-properties-dialog" id="desk-properties-dialog" aria-labelledby="desk-properties-title"><form method="dialog"><header><h2 id="desk-properties-title">Propriétés du calque</h2><button value="cancel" aria-label="Fermer">×</button></header><label>Type<select id="layer-type"><option value="pixel">Calque pixel</option><option value="animation">Calque d’animation</option><option value="symbol">Calque symbole</option></select></label><label>Opacité <output id="layer-opacity-value">100 %</output><input id="layer-opacity" type="range" min="0" max="100" value="100"></label><label>Mode de fusion<select id="layer-blend"><option value="source-over">Normal</option><option value="multiply">Multiplier</option><option value="screen">Écran</option><option value="overlay">Superposition</option><option value="darken">Obscurcir</option><option value="lighten">Éclaircir</option><option value="lighter">Ajouter</option></select></label><label class="property-check"><input id="layer-muted" type="checkbox"> Muet</label><label class="property-check"><input id="layer-locked" type="checkbox"> Verrouillé</label><label class="property-check"><input id="onion-skin-layer" type="checkbox" checked> Pelure d’oignon</label><label class="property-check"><input id="symbol-own-fps" type="checkbox"> Cadence propre au symbole</label><label>Cadence du symbole<input id="symbol-fps" type="number" min="1" max="60" value="24"></label><label>Boucle du symbole<select id="symbol-loop"><option value="normal">Normale</option><option value="once">Une fois</option><option value="pingpong">Ping-pong</option></select></label><button class="desk-property-save" value="default">Terminé</button></form></dialog>
+      <dialog class="desk-markers-dialog" id="desk-markers-dialog" aria-labelledby="desk-markers-title"><form method="dialog"><header><h2 id="desk-markers-title">Marqueurs</h2><button value="cancel" aria-label="Fermer">×</button></header><label>Rechercher un marqueur<input id="marker-search" type="search" placeholder="Rechercher"></label><div id="marker-list"></div><div class="marker-dialog-actions"><button type="button" id="marker-add">Ajouter à l’image actuelle</button><button class="desk-property-save" value="default">Fermer</button></div></form></dialog>
+      <dialog class="desk-symbols-dialog" id="desk-symbols-dialog" aria-labelledby="desk-symbols-title"><form method="dialog"><header><h2 id="desk-symbols-title">Symboles</h2><button value="cancel" aria-label="Fermer">×</button></header><div id="symbol-list"></div><div class="marker-dialog-actions"><button type="button" id="symbol-create">Créer depuis le calque actif</button><button class="desk-property-save" value="default">Fermer</button></div></form></dialog>
       <p class="visually-hidden" id="animation-announcer" aria-live="polite"></p>
     </section>
     <section class="tool-view desk-projects-view" id="desk-projects-view" hidden aria-label="Animation Desk Projects">
-      <header class="desk-topbar"><nav class="desk-tabs" aria-label="Navigation Projects"><button type="button" class="current">Projects</button><button type="button" id="desk-project-library">Library</button><button type="button" id="desk-project-animation">Animation Desk</button></nav><span class="desk-document-name">HEF Creative</span></header>
+      <header class="desk-topbar"><nav class="desk-tabs" aria-label="Navigation Projects"><button type="button" data-home-view aria-label="Retour à l’accueil" title="Retour à l’accueil"><span class="desk-home-icon" aria-hidden="true">⌂</span><span class="desk-home-label">Accueil</span></button><button type="button" class="current">Projects</button><button type="button" id="desk-project-library">Library</button><button type="button" id="desk-project-animation">Animation Desk</button></nav><span class="desk-document-name">HEF Creative</span></header>
       <div class="desk-projects-main">
         <div class="desk-projects-heading"><h1>Projects</h1><div class="desk-projects-actions"><button type="button" id="desk-project-help">Help</button><label>Sort by <select id="desk-project-sort"><option value="updated">Last modified</option><option value="created">Date created</option><option value="name">Name</option></select></label><button type="button" id="desk-project-select" aria-pressed="false">Select</button><button type="button" id="desk-project-import">Import</button><button type="button" class="desk-project-add" id="desk-project-add" aria-label="Create animation clip" title="Create animation clip">+</button></div></div>
         <label class="desk-project-search"><span aria-hidden="true">⌕</span><input id="desk-project-search" type="search" placeholder="Search projects" aria-label="Search projects"></label>
@@ -183,7 +218,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       <dialog class="desk-project-help-dialog" id="desk-project-help-dialog"><div class="library-preview-head"><h2>Animation Desk Projects</h2><button type="button" id="desk-project-help-close" aria-label="Close">×</button></div><p>Vos animations sont enregistrées dans ce navigateur. Créez un clip, dessinez, puis revenez ici pour le rouvrir ou l’exporter.</p><p>Utilisez Import pour charger un fichier HEF Clip au format JSON.</p></dialog>
     </section>
     <section class="tool-view library-view" id="library-view" hidden aria-label="Library">
-      <header class="desk-topbar library-topbar"><nav class="desk-tabs" aria-label="Navigation Library"><button type="button" id="library-projects-tab">Projects</button><button type="button" class="current">Library</button><button type="button" id="library-animation-tab">Animation Desk</button></nav><span class="desk-document-name">HEF Creative</span></header>
+      <header class="desk-topbar library-topbar"><nav class="desk-tabs" aria-label="Navigation Library"><button type="button" data-home-view aria-label="Retour à l’accueil" title="Retour à l’accueil"><span class="desk-home-icon" aria-hidden="true">⌂</span><span class="desk-home-label">Accueil</span></button><button type="button" id="library-projects-tab">Projects</button><button type="button" class="current">Library</button><button type="button" id="library-animation-tab">Animation Desk</button></nav><span class="desk-document-name">HEF Creative</span></header>
       <div class="library-main">
         <div class="library-heading"><h1>Library</h1><div class="library-tabs" role="tablist" aria-label="Type de média"><button type="button" role="tab" data-library-type="clips" aria-selected="true">Animation Clips</button><button type="button" role="tab" data-library-type="videos" aria-selected="false">Videos</button><button type="button" role="tab" data-library-type="audio" aria-selected="false">Audio Clips</button></div><div class="library-actions"><label class="library-sort">Sort by <select id="library-sort"><option value="newest">Recently added</option><option value="oldest">Oldest first</option><option value="name">Name</option></select></label><button class="library-select" id="library-select" type="button" aria-pressed="false">Select</button><div class="library-add-wrap"><button class="library-add" id="library-add" type="button" aria-label="Ajouter" aria-expanded="false" aria-controls="library-add-menu" title="Ajouter">+</button><div class="library-add-menu" id="library-add-menu" hidden><button type="button" id="create-animation-clip"><span aria-hidden="true">＋</span>Create Animation Clip</button><button type="button" id="import-from-photos"><span aria-hidden="true">▧</span>Import from Photos</button><button type="button" id="import-from-files"><span aria-hidden="true">▰</span>Import from Files</button></div></div></div></div>
         <label class="library-search"><span aria-hidden="true">⌕</span><input id="library-search" type="search" placeholder="Search" aria-label="Rechercher dans Library"></label>
@@ -202,6 +237,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   fpsSelect.after(doc.createTextNode(' fps'));
 
   const projectNav = toolNav.querySelector('[data-view="projects"]');
+  const brand = sidebar.querySelector('.brand');
   const views = {
     projects: projectView,
     addons: doc.querySelector('#addons-view'),
@@ -230,6 +266,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const button = event.target.closest('[data-view]');
     if (button) activateView(button.dataset.view);
   });
+  brand.addEventListener('click', event => {
+    event.preventDefault();
+    activateView('projects');
+  });
+  doc.querySelectorAll('[data-home-view]').forEach(button => button.addEventListener('click', () => activateView('projects')));
   projectNav.addEventListener('click', () => activateView('projects'));
   doc.querySelector('#library-tab').addEventListener('click', () => activateView('library'));
   doc.querySelector('#library-projects-tab').addEventListener('click', goToDeskProjects);
@@ -1022,6 +1063,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   draftCanvas.width = canvas.width;
   draftCanvas.height = canvas.height;
   const draftContext = draftCanvas.getContext('2d');
+  const sampleCanvas = doc.createElement('canvas');
+  sampleCanvas.width = canvas.width;
+  sampleCanvas.height = canvas.height;
+  const sampleContext = sampleCanvas.getContext('2d');
   const onionToggle = doc.querySelector('#onion-skin');
   const frameWidth = canvas.width;
   const frameHeight = canvas.height;
@@ -1032,19 +1077,34 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   const layerCell = () => Array(20).fill(null);
   let frameCount = 20;
   let layers = [
-    { id: 'background', name: 'Background', visible: true, locked: true, frames: layerCell() },
-    { id: 'bg', name: 'BG', visible: true, locked: false, frames: layerCell() },
-    { id: 'layer-2', name: 'Layer 2', visible: true, locked: false, frames: layerCell() }
+    { id: 'background', name: 'Background', visible: true, locked: true, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) },
+    { id: 'bg', name: 'BG', visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) },
+    { id: 'layer-2', name: 'Layer 2', visible: true, locked: false, muted: false, opacity: 1, blendMode: 'source-over', type: 'pixel', frames: layerCell(), keyframes: Array(20).fill(false), motion: Array.from({ length: 20 }, identityPose) }
   ];
   let activeLayerId = 'layer-2';
   let undoStacks = Array.from({ length: frameCount }, () => []);
+  let undoMotionStacks = Array.from({ length: frameCount }, () => []);
   let activeFrame = 0;
   let drawing = false;
   let activeTool = 'brush';
+  let activeBrush = 'round';
+  let pathPoints = [];
+  let pathBase = null;
+  let motionTweenEnabled = true;
+  let motionEasing = 'linear';
+  let markers = [];
+  let symbols = [];
+  let layerClipboard = null;
+  let drawingClipboard = null;
+  let selectedLayerIds = new Set(['layer-2']);
+  let onionSkinEnabled = true;
+  let selectionRect = null;
+  let selectionStart = null;
   let playbackTimer = null;
   let playbackIndex = 0;
   let recording = false;
   let paintStart = null;
+  let transformStartPose = null;
 
   function currentProjectRecord(preview = null) {
     saveActiveFrame();
@@ -1058,12 +1118,32 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       height: frameHeight,
       fps: Number(doc.querySelector('#animation-fps').value),
       frameCount,
+      motionTweenEnabled,
+      motionEasing,
+      onionSkinEnabled,
+      markers: markers.map(marker => ({ ...marker })),
+      symbols: symbols.map(symbol => ({
+        ...symbol,
+        frames: symbol.frames.map(frame => frame ? new Uint8ClampedArray(frame) : null),
+        keyframes: symbol.keyframes.slice(),
+        motion: symbol.motion.map(pose => ({ ...pose }))
+      })),
       activeLayerId,
       layers: layers.map(layer => ({
         id: layer.id,
         name: layer.name,
         visible: layer.visible,
         locked: layer.locked,
+        muted: layer.muted,
+        opacity: layer.opacity,
+        blendMode: layer.blendMode,
+        type: layer.type,
+        onionSkin: layer.onionSkin,
+        ownFps: layer.ownFps,
+        fps: layer.fps,
+        loopMode: layer.loopMode,
+        keyframes: layer.keyframes.slice(0, frameCount),
+        motion: layer.motion.slice(0, frameCount).map(pose => ({ ...pose })),
         frames: layer.frames.slice(0, frameCount).map(frame => frame ? new Uint8ClampedArray(frame.data) : null)
       })),
       preview
@@ -1104,13 +1184,24 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       currentProjectName = name;
       currentProjectCreatedAt = Date.now();
       frameCount = 1;
-      layers.forEach(layer => {
-        layer.frames = [null];
-        layer.visible = true;
-      });
+      layers = [
+        { ...makeLayer('Background', 'background'), locked: true },
+        makeLayer('BG', 'bg'),
+        makeLayer('Layer 2', 'layer-2')
+      ];
       undoStacks = [[]];
+      undoMotionStacks = [[]];
+      motionTweenEnabled = true;
+      motionEasing = 'linear';
+      onionSkinEnabled = true;
+      onionToggle.checked = true;
+      doc.querySelector('#motion-easing').value = motionEasing;
+      markers = [];
+      symbols = [];
+      doc.querySelector('#motion-tween').checked = true;
       activeFrame = 0;
       activeLayerId = 'layer-2';
+      selectedLayerIds = new Set([activeLayerId]);
       draftContext.clearRect(0, 0, frameWidth, frameHeight);
       loadDraft();
       doc.querySelector('.desk-document-name').firstChild.textContent = name;
@@ -1145,11 +1236,31 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       fps: project.fps,
       frameCount: project.frameCount,
       activeLayerId: project.activeLayerId,
+      motionTweenEnabled: project.motionTweenEnabled !== false,
+      motionEasing: project.motionEasing || 'linear',
+      onionSkinEnabled: project.onionSkinEnabled !== false,
+      markers: project.markers || [],
+      symbols: (project.symbols || []).map(symbol => ({
+        id: symbol.id, name: symbol.name,
+        frames: symbol.frames.map(frame => frame ? encodePixels(frame) : null),
+        keyframes: symbol.keyframes,
+        motion: symbol.motion
+      })),
       layers: project.layers.map(layer => ({
         id: layer.id,
         name: layer.name,
         visible: layer.visible,
         locked: layer.locked,
+        muted: layer.muted,
+        opacity: layer.opacity,
+        blendMode: layer.blendMode,
+        type: layer.type,
+        onionSkin: layer.onionSkin,
+        ownFps: layer.ownFps,
+        fps: layer.fps,
+        loopMode: layer.loopMode,
+        keyframes: layer.keyframes,
+        motion: layer.motion,
         frames: layer.frames.map(frame => frame ? encodePixels(frame instanceof Uint8ClampedArray ? frame : frame.data) : null)
       }))
     };
@@ -1162,17 +1273,41 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       const portable = JSON.parse(await file.text());
       if (portable.format !== 'hef-creative-clip' || portable.version !== 1 || !Array.isArray(portable.layers)) throw new Error('Choisissez un fichier HEF Clip valide.');
       const count = Math.max(1, Math.min(240, Number(portable.frameCount) || 1));
-      const importedLayers = portable.layers.slice(0, 30).map(layer => ({
-        id: String(layer.id || uuid()),
-        name: String(layer.name || 'Layer'),
-        visible: layer.visible !== false,
-        locked: Boolean(layer.locked),
-        frames: Array.from({ length: count }, (_, index) => layer.frames?.[index] ? decodePixels(layer.frames[index]) : null)
-      }));
+      const importedLayers = portable.layers.slice(0, 30).map(layer => {
+        const frames = Array.from({ length: count }, (_, index) => layer.frames?.[index] ? decodePixels(layer.frames[index]) : null);
+        return {
+          id: String(layer.id || uuid()),
+          name: String(layer.name || 'Layer'),
+          visible: layer.visible !== false,
+          locked: Boolean(layer.locked),
+          muted: Boolean(layer.muted),
+          opacity: Number.isFinite(Number(layer.opacity)) ? Math.min(1, Math.max(0, Number(layer.opacity))) : 1,
+          blendMode: ['source-over', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'lighter'].includes(layer.blendMode) ? layer.blendMode : 'source-over',
+          type: ['pixel', 'animation', 'symbol'].includes(layer.type) ? layer.type : 'pixel',
+          onionSkin: layer.onionSkin !== false,
+          ownFps: Boolean(layer.ownFps),
+          fps: Math.max(1, Math.min(60, Number(layer.fps) || 24)),
+          loopMode: ['normal', 'once', 'pingpong'].includes(layer.loopMode) ? layer.loopMode : 'normal',
+          keyframes: Array.from({ length: count }, (_, index) => Array.isArray(layer.keyframes) ? Boolean(layer.keyframes[index]) : hasPixels(frames[index])),
+          motion: Array.from({ length: count }, (_, index) => normalizePose(layer.motion?.[index])),
+          frames
+        };
+      });
       const project = {
         id: uuid(), kind: 'desk-project', name: String(portable.name || file.name.replace(/\.(hefclip|json)$/i, '')),
         createdAt: Date.now(), updatedAt: Date.now(), width: frameWidth, height: frameHeight,
         fps: Number(portable.fps) || 24, frameCount: count,
+        motionTweenEnabled: portable.motionTweenEnabled !== false,
+        motionEasing: ['linear', 'hold', 'easeIn', 'easeOut', 'easeInOut', 'sine', 'circular', 'back', 'elastic', 'bounce', 'exponential', 'cubic', 'quartic', 'quintic'].includes(portable.motionEasing) ? portable.motionEasing : 'linear',
+        onionSkinEnabled: portable.onionSkinEnabled !== false,
+        markers: Array.isArray(portable.markers) ? portable.markers.filter(marker => Number.isInteger(marker.frame) && marker.frame >= 0 && marker.frame < count).map(marker => ({ frame: marker.frame, name: String(marker.name || `Marqueur ${marker.frame + 1}`) })) : [],
+        symbols: Array.isArray(portable.symbols) ? portable.symbols.slice(0, 50).filter(symbol => symbol && Array.isArray(symbol.frames) && symbol.frames.length).map(symbol => ({
+          id: String(symbol.id || uuid()),
+          name: String(symbol.name || 'Symbole'),
+          frames: symbol.frames.slice(0, 240).map(frame => frame ? decodePixels(frame) : null),
+          keyframes: Array.isArray(symbol.keyframes) ? symbol.keyframes.slice(0, 240).map(Boolean) : [],
+          motion: Array.isArray(symbol.motion) ? symbol.motion.slice(0, 240).map(normalizePose) : []
+        })) : [],
         activeLayerId: importedLayers.find(layer => layer.id === portable.activeLayerId && !layer.locked)?.id || importedLayers.find(layer => !layer.locked)?.id,
         layers: importedLayers, preview: null
       };
@@ -1196,6 +1331,16 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       name: layer.name,
       visible: layer.visible,
       locked: layer.locked,
+      muted: Boolean(layer.muted),
+      opacity: Number.isFinite(Number(layer.opacity)) ? Math.min(1, Math.max(0, Number(layer.opacity))) : 1,
+      blendMode: ['source-over', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'lighter'].includes(layer.blendMode) ? layer.blendMode : 'source-over',
+      type: ['pixel', 'animation', 'symbol'].includes(layer.type) ? layer.type : 'pixel',
+      onionSkin: layer.onionSkin !== false,
+      ownFps: Boolean(layer.ownFps),
+      fps: Math.max(1, Math.min(60, Number(layer.fps) || 24)),
+      loopMode: ['normal', 'once', 'pingpong'].includes(layer.loopMode) ? layer.loopMode : 'normal',
+      keyframes: Array.from({ length: frameCount }, (_, index) => Array.isArray(layer.keyframes) ? Boolean(layer.keyframes[index]) : hasPixels(layer.frames[index])),
+      motion: Array.from({ length: frameCount }, (_, index) => normalizePose(layer.motion?.[index])),
       frames: Array.from({ length: frameCount }, (_, index) => {
         const pixels = layer.frames[index];
         if (!pixels) return null;
@@ -1210,6 +1355,21 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     activeLayerId = layers.find(layer => layer.id === project.activeLayerId && !layer.locked)?.id || layers.find(layer => !layer.locked)?.id;
     activeFrame = 0;
     undoStacks = Array.from({ length: frameCount }, () => []);
+    undoMotionStacks = Array.from({ length: frameCount }, () => []);
+    motionTweenEnabled = project.motionTweenEnabled !== false;
+    motionEasing = project.motionEasing || 'linear';
+    onionSkinEnabled = project.onionSkinEnabled !== false;
+    onionToggle.checked = onionSkinEnabled;
+    doc.querySelector('#motion-easing').value = motionEasing;
+    markers = Array.isArray(project.markers) ? project.markers.map(marker => ({ ...marker })) : [];
+    symbols = Array.isArray(project.symbols) ? project.symbols.map(symbol => ({
+      ...symbol,
+      frames: symbol.frames.map(frame => frame ? new Uint8ClampedArray(frame) : null),
+      keyframes: Array.isArray(symbol.keyframes) ? symbol.keyframes.slice() : [],
+      motion: Array.isArray(symbol.motion) ? symbol.motion.map(pose => ({ ...pose })) : []
+    })) : [];
+    selectedLayerIds = new Set([activeLayerId]);
+    doc.querySelector('#motion-tween').checked = motionTweenEnabled;
     doc.querySelector('#animation-fps').value = String(project.fps || 24);
     doc.querySelector('.desk-document-name').firstChild.textContent = currentProjectName;
     loadDraft();
@@ -1220,43 +1380,159 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   }
 
   function activeLayer() { return layers.find(layer => layer.id === activeLayerId); }
+  function identityPose() { return { x: 0, y: 0, scale: 1, rotation: 0 }; }
+  function normalizePose(pose) {
+    return {
+      x: Number.isFinite(Number(pose?.x)) ? Number(pose.x) : 0,
+      y: Number.isFinite(Number(pose?.y)) ? Number(pose.y) : 0,
+      scale: Number.isFinite(Number(pose?.scale)) && Number(pose.scale) > 0 ? Number(pose.scale) : 1,
+      rotation: Number.isFinite(Number(pose?.rotation)) ? Number(pose.rotation) : 0
+    };
+  }
+  function motionPose(layer, index) {
+    const pose = normalizePose(layer.motion[index]);
+    if (layer.keyframes[index] || !motionTweenEnabled) return pose;
+    const previous = [];
+    const next = [];
+    for (let frame = 0; frame < frameCount; frame += 1) {
+      if (layer.keyframes[frame]) {
+        if (frame < index) previous.push(frame);
+        else if (frame > index) { next.push(frame); break; }
+      }
+    }
+    const start = previous.at(-1);
+    const end = next[0];
+    if (start === undefined && end === undefined) return pose;
+    if (start === undefined) return normalizePose(layer.motion[end]);
+    if (end === undefined) return normalizePose(layer.motion[start]);
+    if (!hasPixels(layer.frames[start]) || !hasPixels(layer.frames[end])) return pose;
+    const from = normalizePose(layer.motion[start]);
+    const to = normalizePose(layer.motion[end]);
+    const amount = easeProgress((index - start) / (end - start));
+    return {
+      x: from.x + (to.x - from.x) * amount,
+      y: from.y + (to.y - from.y) * amount,
+      scale: from.scale + (to.scale - from.scale) * amount,
+      rotation: from.rotation + (to.rotation - from.rotation) * amount
+    };
+  }
+  function easeProgress(value) {
+    const t = Math.min(1, Math.max(0, value));
+    if (motionEasing === 'hold') return t < 1 ? 0 : 1;
+    if (motionEasing === 'easeIn') return t * t;
+    if (motionEasing === 'easeOut') return 1 - (1 - t) ** 2;
+    if (motionEasing === 'easeInOut') return t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+    if (motionEasing === 'sine') return 1 - Math.cos((t * Math.PI) / 2);
+    if (motionEasing === 'circular') return 1 - Math.sqrt(1 - t * t);
+    if (motionEasing === 'back') return 1 + 2.70158 * (t - 1) ** 3 + 1.70158 * (t - 1) ** 2;
+    if (motionEasing === 'elastic') return t === 0 || t === 1 ? t : 2 ** (-10 * t) * Math.sin((t * 10 - 0.75) * (2 * Math.PI / 3)) + 1;
+    if (motionEasing === 'exponential') return t === 0 ? 0 : 2 ** (10 * t - 10);
+    if (motionEasing === 'cubic') return t ** 3;
+    if (motionEasing === 'quartic') return t ** 4;
+    if (motionEasing === 'quintic') return t ** 5;
+    if (motionEasing === 'bounce') {
+      const n = 7.5625, d = 2.75;
+      if (t < 1 / d) return n * t * t;
+      if (t < 2 / d) return n * (t -= 1.5 / d) * t + 0.75;
+      if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + 0.9375;
+      return n * (t -= 2.625 / d) * t + 0.984375;
+    }
+    return t;
+  }
+  function displayedLayerFrame(layer, index) {
+    if (layer.type === 'symbol' && layer.ownFps && layer.frames.length > 1) {
+      const sceneFps = Number(doc.querySelector('#animation-fps').value) || 24;
+      let symbolFrame = Math.floor(index * (Number(layer.fps) || sceneFps) / sceneFps);
+      if (layer.loopMode === 'once') symbolFrame = Math.min(layer.frames.length - 1, symbolFrame);
+      else if (layer.loopMode === 'pingpong') {
+        const cycle = Math.max(1, layer.frames.length * 2 - 2);
+        symbolFrame %= cycle;
+        if (symbolFrame >= layer.frames.length) symbolFrame = cycle - symbolFrame;
+      } else symbolFrame %= layer.frames.length;
+      index = symbolFrame;
+    }
+    if (layer.keyframes[index] || !motionTweenEnabled) return layer.frames[index];
+    let previous = index;
+    while (previous >= 0 && !layer.keyframes[previous]) previous -= 1;
+    let next = index + 1;
+    while (next < frameCount && !layer.keyframes[next]) next += 1;
+    return previous >= 0 && next < frameCount && hasPixels(layer.frames[previous]) && hasPixels(layer.frames[next])
+      ? layer.frames[previous]
+      : layer.frames[index];
+  }
+  function hasPixels(imageData) {
+    if (!imageData) return false;
+    const pixels = imageData instanceof Uint8ClampedArray ? imageData : imageData.data;
+    if (!pixels) return false;
+    for (let index = 3; index < pixels.length; index += 4) {
+      if (pixels[index]) return true;
+    }
+    return false;
+  }
   function cloneImageData(imageData) {
     const copy = context.createImageData(frameWidth, frameHeight);
     if (imageData) copy.data.set(imageData.data);
     return copy;
   }
-  function putLayer(target, data, alpha = 1) {
+  function putLayer(target, data, alpha = 1, pose = identityPose(), layer = null) {
     if (!data) return;
     ghostContext.clearRect(0, 0, frameWidth, frameHeight);
     ghostContext.putImageData(data, 0, 0);
     target.save();
-    target.globalAlpha = alpha;
-    target.drawImage(ghostCanvas, 0, 0);
+    target.globalAlpha = alpha * (layer?.opacity ?? 1);
+    target.globalCompositeOperation = layer?.blendMode || 'source-over';
+    target.translate(frameWidth / 2 + pose.x, frameHeight / 2 + pose.y);
+    target.rotate(pose.rotation);
+    target.scale(pose.scale, pose.scale);
+    target.drawImage(ghostCanvas, -frameWidth / 2, -frameHeight / 2);
     target.restore();
   }
   function paintFrame(index, onionSkin = onionToggle.checked, target = context) {
     target.clearRect(0, 0, frameWidth, frameHeight);
     const background = layers.find(layer => layer.id === 'background');
-    if (background?.visible) {
+    if (background?.visible && !background.muted) {
+      target.save();
+      target.globalAlpha = background.opacity ?? 1;
+      target.globalCompositeOperation = background.blendMode || 'source-over';
       target.fillStyle = '#ffffff';
       target.fillRect(0, 0, frameWidth, frameHeight);
+      target.restore();
     }
-    if (onionSkin && index > 0) {
-      layers.filter(layer => layer.visible && !layer.locked).forEach(layer => putLayer(target, layer.frames[index - 1], 0.16));
+    if (onionSkin && onionSkinEnabled && index > 0) {
+      layers.filter(layer => layer.visible && !layer.muted && layer.onionSkin !== false).forEach(layer => {
+        putLayer(target, displayedLayerFrame(layer, index - 1), 0.16, motionPose(layer, index - 1), layer);
+      });
     }
-    layers.filter(layer => layer.visible && !layer.locked).forEach(layer => {
-      const data = layer.id === activeLayerId && index === activeFrame ? draftContext.getImageData(0, 0, frameWidth, frameHeight) : layer.frames[index];
-      putLayer(target, data);
+    layers.filter(layer => layer.visible && !layer.muted).forEach(layer => {
+      const data = layer.id === activeLayerId && index === activeFrame
+        ? draftContext.getImageData(0, 0, frameWidth, frameHeight)
+        : displayedLayerFrame(layer, index);
+      putLayer(target, data, 1, motionPose(layer, index), layer);
     });
+    if (target === context && onionSkin && selectionRect) {
+      target.save();
+      target.setLineDash([5, 4]);
+      target.strokeStyle = '#1769ff';
+      target.lineWidth = 1;
+      target.strokeRect(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height);
+      target.restore();
+    }
   }
   function loadDraft() {
     draftContext.clearRect(0, 0, frameWidth, frameHeight);
-    const data = activeLayer()?.frames[activeFrame];
+    const layer = activeLayer();
+    const data = layer && displayedLayerFrame(layer, activeFrame);
     if (data) draftContext.putImageData(data, 0, 0);
   }
   function saveActiveFrame() {
     const layer = activeLayer();
     if (layer && !layer.locked) layer.frames[activeFrame] = draftContext.getImageData(0, 0, frameWidth, frameHeight);
+  }
+  function markActiveKeyframe() {
+    const layer = activeLayer();
+    if (!layer || layer.locked) return;
+    if (!layer.keyframes[activeFrame]) layer.motion[activeFrame] = motionPose(layer, activeFrame);
+    layer.keyframes[activeFrame] = true;
   }
   function refreshTimeline() {
     const cellWidth = Number(doc.querySelector('#timeline-scale').value);
@@ -1268,6 +1544,11 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       tick.type = 'button';
       tick.className = 'ruler-tick';
       tick.textContent = String(index + 1);
+      const frameMarkerNames = markers.filter(marker => marker.frame === index).map(marker => marker.name);
+      if (frameMarkerNames.length) {
+        tick.classList.add('has-marker');
+        tick.title = frameMarkerNames.join(', ');
+      }
       tick.setAttribute('aria-pressed', String(index === activeFrame));
       tick.addEventListener('click', () => selectFrame(index));
       ruler.append(tick);
@@ -1278,19 +1559,36 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     layerTracks.style.setProperty('--timeline-columns', columns);
     layers.forEach(layer => {
       const label = doc.createElement('div');
-      label.className = `layer-label${layer.id === activeLayerId ? ' is-active' : ''}`;
+      label.className = `layer-label${layer.id === activeLayerId ? ' is-active' : ''}${selectedLayerIds.has(layer.id) ? ' is-selected' : ''}`;
       const choose = doc.createElement('button');
       choose.type = 'button';
       choose.className = 'layer-name';
       choose.textContent = layer.name;
-      choose.disabled = layer.locked;
-      choose.addEventListener('click', () => {
+      choose.addEventListener('click', event => {
+        if (pathBase) cancelPath();
         saveActiveFrame();
+        if (event.ctrlKey || event.metaKey || event.shiftKey) {
+          if (selectedLayerIds.has(layer.id) && selectedLayerIds.size > 1) selectedLayerIds.delete(layer.id);
+          else selectedLayerIds.add(layer.id);
+        } else selectedLayerIds = new Set([layer.id]);
         activeLayerId = layer.id;
         loadDraft();
         paintFrame(activeFrame);
         refreshTimeline();
         scheduleProjectSave();
+      });
+      choose.addEventListener('dblclick', () => openLayerProperties(layer));
+      label.addEventListener('contextmenu', event => {
+        event.preventDefault();
+        saveActiveFrame();
+        activeLayerId = layer.id;
+        selectedLayerIds = new Set([layer.id]);
+        loadDraft();
+        paintFrame(activeFrame);
+        refreshTimeline();
+        const menu = doc.querySelector('#desk-action-menu');
+        menu.hidden = false;
+        doc.querySelector('#actions-tab').setAttribute('aria-expanded', 'true');
       });
       const visibility = doc.createElement('button');
       visibility.type = 'button';
@@ -1305,7 +1603,20 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         refreshTimeline();
         scheduleProjectSave();
       });
-      label.append(choose, visibility);
+      const mute = doc.createElement('button');
+      mute.type = 'button';
+      mute.className = 'layer-visibility';
+      mute.textContent = layer.muted ? 'M' : 'm';
+      mute.title = layer.muted ? 'Réactiver le calque' : 'Rendre le calque muet';
+      mute.setAttribute('aria-label', mute.title);
+      mute.addEventListener('click', () => {
+        saveActiveFrame();
+        layer.muted = !layer.muted;
+        paintFrame(activeFrame);
+        refreshTimeline();
+        scheduleProjectSave();
+      });
+      label.append(choose, visibility, mute);
       if (!layer.locked) {
         const removeLayer = doc.createElement('button');
         removeLayer.type = 'button';
@@ -1317,6 +1628,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
           if (layers.filter(item => !item.locked).length < 2) return;
           layers = layers.filter(item => item.id !== layer.id);
           if (activeLayerId === layer.id) activeLayerId = layers.find(item => !item.locked).id;
+          selectedLayerIds = new Set([activeLayerId]);
           loadDraft();
           paintFrame(activeFrame);
           refreshTimeline();
@@ -1332,8 +1644,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
       for (let index = 0; index < frameCount; index += 1) {
         const cell = doc.createElement('button');
         cell.type = 'button';
-        cell.className = `timeline-cell${index === activeFrame ? ' is-current' : ''}${layer.frames[index] ? ' has-drawing' : ''}`;
-        cell.setAttribute('aria-label', `${layer.name}, image ${index + 1}`);
+        cell.className = `timeline-cell${index === activeFrame ? ' is-current' : ''}${hasPixels(layer.frames[index]) ? ' has-drawing' : ''}${layer.keyframes[index] ? ' is-keyframe' : ''}`;
+        cell.setAttribute('aria-label', `${layer.name}, image ${index + 1}${layer.keyframes[index] ? ', image clé' : ''}`);
         cell.setAttribute('aria-pressed', String(index === activeFrame));
         if (layer.frames[index]) {
           const thumb = doc.createElement('canvas');
@@ -1354,6 +1666,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   }
   function selectFrame(index) {
     if (playbackTimer) stopPlayback();
+    if (pathBase) cancelPath();
     saveActiveFrame();
     activeFrame = index;
     loadDraft();
@@ -1368,31 +1681,125 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     const stack = undoStacks[activeFrame];
     stack.push(cloneImageData(draftContext.getImageData(0, 0, frameWidth, frameHeight)));
     if (stack.length > 30) stack.shift();
+    const motionStack = undoMotionStacks[activeFrame];
+    const layer = activeLayer();
+    motionStack.push(layer ? motionPose(layer, activeFrame) : identityPose());
+    if (motionStack.length > 30) motionStack.shift();
   }
   function finishStroke() {
     if (!drawing) return;
     drawing = false;
     saveActiveFrame();
+    if (hasPixels(draftContext.getImageData(0, 0, frameWidth, frameHeight))) markActiveKeyframe();
     paintFrame(activeFrame);
     refreshTimeline();
     scheduleProjectSave();
   }
+  function applyBrushStyle(target, event) {
+    const brush = {
+      round: { opacity: 1, lineCap: 'round', softness: 0 },
+      pencil: { opacity: 0.72, lineCap: 'round', softness: 0 },
+      marker: { opacity: 0.48, lineCap: 'square', softness: 0 },
+      airbrush: { opacity: 0.28, lineCap: 'round', softness: 0.9 }
+    }[activeBrush];
+    const pressure = doc.querySelector('#brush-pressure').checked && event.pointerType === 'pen'
+      ? Math.max(0.15, event.pressure || 0.5)
+      : 1;
+    const size = Number(doc.querySelector('#brush-size').value) * pressure;
+    target.globalAlpha = brush.opacity * (Number(doc.querySelector('#brush-opacity').value) / 100) * pressure;
+    target.lineWidth = size;
+    target.lineCap = brush.lineCap;
+    target.lineJoin = 'round';
+    target.shadowColor = doc.querySelector('#brush-color').value;
+    target.shadowBlur = brush.softness * size;
+  }
+  function resetBrushStyle(target) {
+    target.globalAlpha = 1;
+    target.shadowBlur = 0;
+  }
+  function drawPathPreview(endpoint = null, commit = false) {
+    if (!pathBase || pathPoints.length === 0) return;
+    draftContext.putImageData(pathBase, 0, 0);
+    if (pathPoints.length < 2 && !endpoint) {
+      paintFrame(activeFrame);
+      return;
+    }
+    draftContext.beginPath();
+    draftContext.moveTo(pathPoints[0].x, pathPoints[0].y);
+    pathPoints.slice(1).forEach(location => draftContext.lineTo(location.x, location.y));
+    if (endpoint && (endpoint.x !== pathPoints[pathPoints.length - 1].x || endpoint.y !== pathPoints[pathPoints.length - 1].y)) {
+      draftContext.lineTo(endpoint.x, endpoint.y);
+    }
+    draftContext.strokeStyle = doc.querySelector('#brush-color').value;
+    applyBrushStyle(draftContext, { pointerType: 'mouse', pressure: 0 });
+    draftContext.stroke();
+    resetBrushStyle(draftContext);
+    paintFrame(activeFrame);
+    if (commit) {
+      pathBase = null;
+      pathPoints = [];
+      saveActiveFrame();
+      markActiveKeyframe();
+      refreshTimeline();
+      scheduleProjectSave();
+    }
+  }
+  function finishPath() {
+    if (!pathBase) return;
+    if (pathPoints.length < 2) {
+      cancelPath();
+      return;
+    }
+    drawPathPreview(null, true);
+  }
+  function cancelPath() {
+    if (!pathBase) return;
+    draftContext.putImageData(pathBase, 0, 0);
+    pathBase = null;
+    pathPoints = [];
+    undoStacks[activeFrame].pop();
+    undoMotionStacks[activeFrame].pop();
+    paintFrame(activeFrame);
+  }
   canvas.addEventListener('pointerdown', event => {
-    if (recording || playbackTimer || activeLayer()?.locked) return;
+    if (recording || playbackTimer) return;
     const location = point(event);
     if (activeTool === 'eyedropper') {
-      const pixel = context.getImageData(location.x, location.y, 1, 1).data;
+      paintFrame(activeFrame, false, sampleContext);
+      const pixel = sampleContext.getImageData(location.x, location.y, 1, 1).data;
       doc.querySelector('#brush-color').value = `#${[pixel[0], pixel[1], pixel[2]].map(value => value.toString(16).padStart(2, '0')).join('')}`;
       setTool('brush');
       return;
     }
-    if (activeTool === 'cursor' || activeTool === 'select') return;
+    if (activeLayer()?.locked) return;
+    if (activeTool === 'select') {
+      selectionStart = location;
+      selectionRect = { x: location.x, y: location.y, width: 0, height: 0 };
+      canvas.setPointerCapture(event.pointerId);
+      paintFrame(activeFrame);
+      return;
+    }
+    if (activeTool === 'cursor') return;
+    if (activeTool === 'transform' && !hasPixels(draftContext.getImageData(0, 0, frameWidth, frameHeight))) return;
+    if (activeTool === 'path') {
+      if (!pathBase) {
+        rememberForUndo();
+        pathBase = cloneImageData(draftContext.getImageData(0, 0, frameWidth, frameHeight));
+        pathPoints = [];
+      }
+      pathPoints.push(location);
+      if (event.detail > 1) finishPath();
+      else drawPathPreview();
+      event.preventDefault();
+      return;
+    }
     event.preventDefault();
     rememberForUndo();
     if (activeTool === 'fill') {
       draftContext.fillStyle = doc.querySelector('#brush-color').value;
       draftContext.fillRect(0, 0, frameWidth, frameHeight);
       saveActiveFrame();
+      markActiveKeyframe();
       paintFrame(activeFrame);
       refreshTimeline();
       scheduleProjectSave();
@@ -1405,6 +1812,7 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
         draftContext.font = `${Math.max(16, Number(doc.querySelector('#brush-size').value) * 4)}px sans-serif`;
         draftContext.fillText(text, location.x, location.y);
         saveActiveFrame();
+        markActiveKeyframe();
         paintFrame(activeFrame);
         refreshTimeline();
         scheduleProjectSave();
@@ -1414,41 +1822,120 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     drawing = true;
     paintStart = location;
     canvas.setPointerCapture(event.pointerId);
+    if (activeTool === 'transform') {
+      const layer = activeLayer();
+      transformStartPose = motionPose(layer, activeFrame);
+      layer.motion[activeFrame] = { ...transformStartPose };
+      markActiveKeyframe();
+      return;
+    }
     draftContext.beginPath();
     draftContext.moveTo(location.x, location.y);
     draftContext.lineTo(location.x + 0.01, location.y + 0.01);
     draftContext.strokeStyle = activeTool === 'erase' ? 'rgba(0,0,0,1)' : doc.querySelector('#brush-color').value;
     draftContext.globalCompositeOperation = activeTool === 'erase' ? 'destination-out' : 'source-over';
-    draftContext.lineWidth = Number(doc.querySelector('#brush-size').value);
-    draftContext.lineCap = 'round';
-    draftContext.lineJoin = 'round';
+    if (activeTool === 'erase') {
+      draftContext.globalAlpha = 1;
+      draftContext.lineWidth = Number(doc.querySelector('#brush-size').value);
+      draftContext.lineCap = 'round';
+      draftContext.lineJoin = 'round';
+    } else {
+      applyBrushStyle(draftContext, event);
+    }
     draftContext.stroke();
     draftContext.globalCompositeOperation = 'source-over';
+    resetBrushStyle(draftContext);
     paintFrame(activeFrame);
   });
   canvas.addEventListener('pointermove', event => {
+    if (pathBase && activeTool === 'path') {
+      drawPathPreview(point(event));
+      return;
+    }
+    if (selectionStart) {
+      const location = point(event);
+      const x = Math.min(selectionStart.x, location.x);
+      const y = Math.min(selectionStart.y, location.y);
+      selectionRect = {
+        x, y,
+        width: Math.abs(location.x - selectionStart.x),
+        height: Math.abs(location.y - selectionStart.y)
+      };
+      paintFrame(activeFrame);
+      return;
+    }
     if (!drawing) return;
     const location = point(event);
+    if (activeTool === 'transform') {
+      const layer = activeLayer();
+      const startPose = transformStartPose;
+      layer.motion[activeFrame] = {
+        ...startPose,
+        x: startPose.x + location.x - paintStart.x,
+        y: startPose.y + location.y - paintStart.y
+      };
+      paintFrame(activeFrame);
+      return;
+    }
     draftContext.beginPath();
     draftContext.moveTo(paintStart.x, paintStart.y);
     draftContext.lineTo(location.x, location.y);
     draftContext.strokeStyle = activeTool === 'erase' ? 'rgba(0,0,0,1)' : doc.querySelector('#brush-color').value;
     draftContext.globalCompositeOperation = activeTool === 'erase' ? 'destination-out' : 'source-over';
-    draftContext.lineWidth = Number(doc.querySelector('#brush-size').value);
-    draftContext.lineCap = 'round';
-    draftContext.lineJoin = 'round';
+    if (activeTool === 'erase') {
+      draftContext.globalAlpha = 1;
+      draftContext.lineWidth = Number(doc.querySelector('#brush-size').value);
+      draftContext.lineCap = 'round';
+      draftContext.lineJoin = 'round';
+    } else {
+      applyBrushStyle(draftContext, event);
+    }
     draftContext.stroke();
     draftContext.globalCompositeOperation = 'source-over';
+    resetBrushStyle(draftContext);
     paintStart = location;
     paintFrame(activeFrame);
   });
-  canvas.addEventListener('pointerup', finishStroke);
-  canvas.addEventListener('pointercancel', finishStroke);
+  function endCanvasPointer() {
+    if (selectionStart) {
+      selectionStart = null;
+      if (selectionRect && (selectionRect.width < 1 || selectionRect.height < 1)) selectionRect = null;
+      return;
+    }
+    finishStroke();
+  }
+  canvas.addEventListener('pointerup', endCanvasPointer);
+  canvas.addEventListener('pointercancel', endCanvasPointer);
+  canvas.addEventListener('dblclick', finishPath);
+  canvas.addEventListener('wheel', event => {
+    if (activeTool !== 'transform' || recording || playbackTimer || activeLayer()?.locked) return;
+    event.preventDefault();
+    rememberForUndo();
+    const layer = activeLayer();
+    const pose = motionPose(layer, activeFrame);
+    layer.keyframes[activeFrame] = true;
+    if (event.shiftKey) pose.rotation += (event.deltaY < 0 ? -1 : 1) * Math.PI / 36;
+    else pose.scale = Math.min(8, Math.max(0.1, pose.scale * (event.deltaY < 0 ? 1.05 : 0.95)));
+    layer.motion[activeFrame] = pose;
+    saveActiveFrame();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+  });
+  doc.addEventListener('keydown', event => {
+    if (activeTool !== 'path' || !pathBase) return;
+    if (event.key === 'Enter') { event.preventDefault(); finishPath(); }
+    if (event.key === 'Escape') { event.preventDefault(); cancelPath(); }
+  });
 
   function setTool(tool) {
+    if (pathBase) cancelPath();
     activeTool = tool;
     doc.querySelectorAll('[data-tool]').forEach(button => button.classList.toggle('selected', button.dataset.tool === tool));
-    canvas.style.cursor = tool === 'cursor' ? 'default' : tool === 'select' ? 'crosshair' : 'crosshair';
+    canvas.style.cursor = tool === 'cursor' ? 'default' : tool === 'transform' ? 'move' : 'crosshair';
+    doc.querySelector('#animation-status').textContent = tool === 'path'
+      ? 'Cliquez pour poser des points, puis double-cliquez ou appuyez sur Entrée pour terminer.'
+      : tool === 'transform' ? 'Glissez pour déplacer ; molette pour redimensionner, Maj + molette pour pivoter.' : 'Prêt';
   }
   doc.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => setTool(button.dataset.tool)));
   doc.querySelector('#brush-size').addEventListener('input', event => {
@@ -1460,11 +1947,56 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     doc.querySelector('#brush-size').value = event.target.value;
     doc.querySelector('#brush-size').dispatchEvent(new Event('input'));
   });
+  doc.querySelector('#brush-opacity').addEventListener('input', event => {
+    doc.querySelector('#brush-opacity-value').value = `${event.target.value} %`;
+  });
+  doc.querySelectorAll('[data-brush]').forEach(button => button.addEventListener('click', () => {
+    activeBrush = button.dataset.brush;
+    doc.querySelectorAll('[data-brush]').forEach(preset => preset.setAttribute('aria-pressed', String(preset === button)));
+    doc.querySelector('#toggle-brush-library').setAttribute('aria-expanded', 'false');
+    doc.querySelector('#brush-library').hidden = true;
+  }));
+  doc.querySelector('#toggle-brush-library').addEventListener('click', event => {
+    const library = doc.querySelector('#brush-library');
+    library.hidden = !library.hidden;
+    event.currentTarget.setAttribute('aria-expanded', String(!library.hidden));
+  });
+  doc.querySelector('#add-keyframe').addEventListener('click', () => {
+    const layer = activeLayer();
+    if (!layer || layer.locked || layer.keyframes[activeFrame]) return;
+    const pose = motionPose(layer, activeFrame);
+    saveActiveFrame();
+    if (!hasPixels(layer.frames[activeFrame])) {
+      const previous = layer.frames.slice(0, activeFrame).reverse().find(hasPixels);
+      if (previous) {
+        layer.frames[activeFrame] = cloneImageData(previous);
+        draftContext.putImageData(layer.frames[activeFrame], 0, 0);
+      }
+    }
+    layer.motion[activeFrame] = pose;
+    layer.keyframes[activeFrame] = true;
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = `Image clé créée à l’image ${activeFrame + 1}.`;
+  });
+  doc.querySelector('#motion-tween').addEventListener('change', event => {
+    motionTweenEnabled = event.currentTarget.checked;
+    loadDraft();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = motionTweenEnabled
+      ? 'Déplacement automatique activé entre les images clés.'
+      : 'Déplacement automatique désactivé.';
+  });
   doc.querySelector('#animation-fps').addEventListener('change', scheduleProjectSave);
   doc.querySelector('#undo-frame').addEventListener('click', () => {
     const previous = undoStacks[activeFrame].pop();
     if (!previous) return;
+    const previousMotion = undoMotionStacks[activeFrame].pop();
     draftContext.putImageData(previous, 0, 0);
+    if (previousMotion) activeLayer().motion[activeFrame] = previousMotion;
     saveActiveFrame();
     paintFrame(activeFrame);
     refreshTimeline();
@@ -1474,14 +2006,21 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     rememberForUndo();
     draftContext.clearRect(0, 0, frameWidth, frameHeight);
     saveActiveFrame();
+    markActiveKeyframe();
     paintFrame(activeFrame);
     refreshTimeline();
     scheduleProjectSave();
   });
   doc.querySelector('#delete-frame').addEventListener('click', () => {
     if (frameCount === 1) return;
-    layers.forEach(layer => layer.frames.splice(activeFrame, 1));
+    markers = markers.filter(marker => marker.frame !== activeFrame).map(marker => marker.frame > activeFrame ? { ...marker, frame: marker.frame - 1 } : marker);
+    layers.forEach(layer => {
+      layer.frames.splice(activeFrame, 1);
+      layer.keyframes.splice(activeFrame, 1);
+      layer.motion.splice(activeFrame, 1);
+    });
     undoStacks.splice(activeFrame, 1);
+    undoMotionStacks.splice(activeFrame, 1);
     frameCount -= 1;
     activeFrame = Math.min(activeFrame, frameCount - 1);
     loadDraft();
@@ -1492,11 +2031,15 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   function insertFrame(mode) {
     saveActiveFrame();
     const sourceIndex = activeFrame;
+    markers = markers.map(marker => marker.frame > sourceIndex ? { ...marker, frame: marker.frame + 1 } : marker);
     layers.forEach(layer => {
       const source = layer.frames[sourceIndex];
       layer.frames.splice(sourceIndex + 1, 0, mode === 'drawing' ? null : cloneImageData(source));
+      layer.keyframes.splice(sourceIndex + 1, 0, mode === 'duplicate' && layer.keyframes[sourceIndex]);
+      layer.motion.splice(sourceIndex + 1, 0, mode === 'drawing' ? identityPose() : normalizePose(layer.motion[sourceIndex]));
     });
     undoStacks.splice(sourceIndex + 1, 0, []);
+    undoMotionStacks.splice(sourceIndex + 1, 0, []);
     activeFrame += 1;
     frameCount += 1;
     loadDraft();
@@ -1509,15 +2052,8 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   doc.querySelector('#duplicate-frame').addEventListener('click', () => insertFrame('duplicate'));
   doc.querySelector('#extend-frame').addEventListener('click', () => insertFrame('extend'));
   doc.querySelector('#add-layer').addEventListener('click', () => {
-    saveActiveFrame();
     const count = layers.filter(layer => !layer.locked).length + 1;
-    const layer = { id: `layer-${Date.now()}`, name: `Layer ${count + 1}`, visible: true, locked: false, frames: Array(frameCount).fill(null) };
-    layers.push(layer);
-    activeLayerId = layer.id;
-    loadDraft();
-    paintFrame(activeFrame);
-    refreshTimeline();
-    scheduleProjectSave();
+    addLayerToProject(makeLayer(`Layer ${count + 1}`));
   });
   doc.querySelector('#previous-frame').addEventListener('click', () => selectFrame(Math.max(0, activeFrame - 1)));
   doc.querySelector('#timeline-prev').addEventListener('click', () => selectFrame(Math.max(0, activeFrame - 1)));
@@ -1525,8 +2061,10 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   doc.querySelector('#timeline-next').addEventListener('click', () => selectFrame(Math.min(frameCount - 1, activeFrame + 1)));
   doc.querySelector('#timeline-scale').addEventListener('input', refreshTimeline);
   doc.querySelector('#onion-skin').addEventListener('change', () => {
+    onionSkinEnabled = onionToggle.checked;
     doc.querySelector('#stage-onion').setAttribute('aria-pressed', String(onionToggle.checked));
     paintFrame(activeFrame);
+    scheduleProjectSave();
   });
   doc.querySelector('#stage-onion').addEventListener('click', () => {
     onionToggle.checked = !onionToggle.checked;
@@ -1561,14 +2099,15 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
     event.currentTarget.setAttribute('aria-expanded', String(!menu.hidden));
   });
   doc.querySelector('#menu-export-video').addEventListener('click', () => {
-    doc.querySelector('#desk-action-menu').hidden = true;
+    hideActionMenu();
     exportVideo();
   });
   doc.querySelector('#menu-clear-frame').addEventListener('click', () => {
-    doc.querySelector('#desk-action-menu').hidden = true;
+    hideActionMenu();
     doc.querySelector('#clear-frame').click();
   });
   doc.querySelector('#export-frame').addEventListener('click', async () => {
+    hideActionMenu();
     saveActiveFrame();
     paintFrame(activeFrame, false);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
@@ -1607,6 +2146,318 @@ minecraft:stone,minecraft:stone,minecraft:stone</textarea>
   doc.querySelector('#stage-to-last').addEventListener('click', () => selectFrame(frameCount - 1));
   doc.querySelector('#loop-playback').addEventListener('click', event => {
     event.currentTarget.setAttribute('aria-pressed', String(event.currentTarget.getAttribute('aria-pressed') !== 'true'));
+  });
+  doc.querySelector('#motion-easing').addEventListener('change', event => {
+    motionEasing = event.currentTarget.value;
+    paintFrame(activeFrame);
+    scheduleProjectSave();
+  });
+  const propertiesDialog = doc.querySelector('#desk-properties-dialog');
+  function applyLayerProperties() {
+    const layer = layers.find(item => item.id === propertiesLayerId);
+    if (!layer) return;
+    layer.type = doc.querySelector('#layer-type').value;
+    layer.opacity = Number(doc.querySelector('#layer-opacity').value) / 100;
+    layer.blendMode = doc.querySelector('#layer-blend').value;
+    layer.muted = doc.querySelector('#layer-muted').checked;
+    layer.locked = doc.querySelector('#layer-locked').checked;
+    layer.onionSkin = doc.querySelector('#onion-skin-layer').checked;
+    layer.ownFps = doc.querySelector('#symbol-own-fps').checked;
+    layer.fps = Math.max(1, Math.min(60, Number(doc.querySelector('#symbol-fps').value) || 24));
+    layer.loopMode = doc.querySelector('#symbol-loop').value;
+    if (layer.locked && activeLayerId === layer.id) {
+      const editable = layers.find(item => !item.locked && item.id !== layer.id);
+      if (editable) {
+        activeLayerId = editable.id;
+        selectedLayerIds = new Set([editable.id]);
+        loadDraft();
+      }
+    }
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+  }
+  propertiesDialog.querySelector('form').addEventListener('input', event => {
+    if (event.target.matches('#layer-opacity')) {
+      doc.querySelector('#layer-opacity-value').value = `${event.target.value} %`;
+    }
+    applyLayerProperties();
+  });
+  propertiesDialog.querySelector('form').addEventListener('change', applyLayerProperties);
+  propertiesDialog.addEventListener('close', () => {
+    propertiesLayerId = null;
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+  });
+  function hideActionMenu() {
+    doc.querySelector('#desk-action-menu').hidden = true;
+    doc.querySelector('#actions-tab').setAttribute('aria-expanded', 'false');
+  }
+  function selectedLayer() { return layers.find(layer => layer.id === activeLayerId); }
+  function addLayerToProject(layer) {
+    saveActiveFrame();
+    const activeIndex = layers.findIndex(item => item.id === activeLayerId);
+    layers.splice(activeIndex + 1, 0, layer);
+    activeLayerId = layer.id;
+    selectedLayerIds = new Set([layer.id]);
+    loadDraft();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+  }
+  function copyDrawing() {
+    saveActiveFrame();
+    const frame = draftContext.getImageData(0, 0, frameWidth, frameHeight);
+    if (selectionRect) {
+      for (let y = 0; y < frameHeight; y += 1) {
+        for (let x = 0; x < frameWidth; x += 1) {
+          if (x < selectionRect.x || x > selectionRect.x + selectionRect.width || y < selectionRect.y || y > selectionRect.y + selectionRect.height) {
+            const offset = (y * frameWidth + x) * 4;
+            frame.data[offset + 3] = 0;
+          }
+        }
+      }
+    }
+    drawingClipboard = { imageData: frame, x: 0, y: 0 };
+    doc.querySelector('#animation-status').textContent = 'Dessin copié.';
+  }
+  function pasteDrawing() {
+    if (!drawingClipboard || activeLayer()?.locked) return;
+    rememberForUndo();
+    draftContext.putImageData(cloneImageData(drawingClipboard.imageData), drawingClipboard.x, drawingClipboard.y);
+    saveActiveFrame();
+    markActiveKeyframe();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+    doc.querySelector('#animation-status').textContent = 'Dessin collé.';
+  }
+  function removeSelectedLayers() {
+    const removable = layers.filter(layer => selectedLayerIds.has(layer.id) && !layer.locked);
+    if (!removable.length || layers.filter(layer => !layer.locked).length <= removable.length) return;
+    layers = layers.filter(layer => !removable.includes(layer));
+    const next = layers.find(layer => !layer.locked);
+    if (!layers.some(layer => layer.id === activeLayerId)) activeLayerId = next.id;
+    selectedLayerIds = new Set([activeLayerId]);
+    loadDraft();
+    paintFrame(activeFrame);
+    refreshTimeline();
+    scheduleProjectSave();
+  }
+  function createSymbolFromLayer() {
+    const layer = selectedLayer();
+    if (!layer) return;
+    saveActiveFrame();
+    const name = global.prompt('Nom du symbole', layer.name);
+    if (name === null) return;
+    symbols.push({
+      id: uuid(), name: name.trim() || layer.name,
+      frames: layer.frames.map(frame => frame ? new Uint8ClampedArray(frame.data) : null),
+      keyframes: layer.keyframes.slice(),
+      motion: layer.motion.map(pose => ({ ...pose }))
+    });
+    scheduleProjectSave();
+    renderSymbols();
+  }
+  function renderSymbols() {
+    const list = doc.querySelector('#symbol-list');
+    list.replaceChildren();
+    if (!symbols.length) {
+      const empty = doc.createElement('p');
+      empty.textContent = 'Aucun symbole enregistré.';
+      list.append(empty);
+      return;
+    }
+    symbols.forEach(symbol => {
+      const row = doc.createElement('div');
+      row.className = 'symbol-row';
+      const insert = doc.createElement('button');
+      insert.type = 'button';
+      insert.textContent = `Ajouter ${symbol.name}`;
+      insert.addEventListener('click', () => {
+        const layer = makeLayer(symbol.name);
+        layer.type = 'symbol';
+        layer.ownFps = true;
+        layer.frames = Array.from({ length: frameCount }, (_, index) => {
+          const pixels = symbol.frames[index % symbol.frames.length];
+          if (!pixels) return null;
+          const image = context.createImageData(frameWidth, frameHeight);
+          image.data.set(pixels instanceof Uint8ClampedArray ? pixels : pixels.data);
+          return image;
+        });
+        layer.keyframes = Array.from({ length: frameCount }, (_, index) => Boolean(symbol.keyframes?.[index % symbol.keyframes.length]));
+        layer.motion = Array.from({ length: frameCount }, (_, index) => normalizePose(symbol.motion?.[index % symbol.motion.length]));
+        addLayerToProject(layer);
+        doc.querySelector('#desk-symbols-dialog').close();
+      });
+      const remove = doc.createElement('button');
+      remove.type = 'button';
+      remove.textContent = 'Supprimer';
+      remove.setAttribute('aria-label', `Supprimer le symbole ${symbol.name}`);
+      remove.addEventListener('click', () => {
+        symbols = symbols.filter(item => item.id !== symbol.id);
+        renderSymbols();
+        scheduleProjectSave();
+      });
+      row.append(insert, remove);
+      list.append(row);
+    });
+  }
+  function renderMarkers() {
+    const list = doc.querySelector('#marker-list');
+    const query = doc.querySelector('#marker-search').value.trim().toLocaleLowerCase();
+    list.replaceChildren();
+    markers.filter(marker => marker.name.toLocaleLowerCase().includes(query)).forEach(marker => {
+      const row = doc.createElement('div');
+      row.className = 'marker-row';
+      const go = doc.createElement('button');
+      go.type = 'button';
+      go.textContent = `${marker.name} — image ${marker.frame + 1}`;
+      go.addEventListener('click', () => {
+        selectFrame(marker.frame);
+        doc.querySelector('#desk-markers-dialog').close();
+      });
+      const remove = doc.createElement('button');
+      remove.type = 'button';
+      remove.textContent = '×';
+      remove.setAttribute('aria-label', `Supprimer le marqueur ${marker.name}`);
+      remove.addEventListener('click', () => {
+        markers = markers.filter(item => item !== marker);
+        renderMarkers();
+        scheduleProjectSave();
+      });
+      row.append(go, remove);
+      list.append(row);
+    });
+  }
+  function addMarker() {
+    const name = global.prompt('Nom du marqueur', `Marqueur ${activeFrame + 1}`);
+    if (name === null) return;
+    markers.push({ frame: activeFrame, name: name.trim() || `Marqueur ${activeFrame + 1}` });
+    markers.sort((a, b) => a.frame - b.frame);
+    renderMarkers();
+    refreshTimeline();
+    scheduleProjectSave();
+  }
+  doc.querySelector('#marker-add').addEventListener('click', addMarker);
+  doc.querySelector('#marker-search').addEventListener('input', renderMarkers);
+  doc.querySelector('#open-markers').addEventListener('click', () => {
+    renderMarkers();
+    doc.querySelector('#desk-markers-dialog').showModal();
+  });
+  doc.querySelector('#symbol-create').addEventListener('click', createSymbolFromLayer);
+  doc.querySelector('#menu-open-symbols').addEventListener('click', () => {
+    hideActionMenu();
+    renderSymbols();
+    doc.querySelector('#desk-symbols-dialog').showModal();
+  });
+  doc.querySelector('#menu-copy-drawing').addEventListener('click', () => { copyDrawing(); hideActionMenu(); });
+  doc.querySelector('#menu-paste-drawing').addEventListener('click', () => { pasteDrawing(); hideActionMenu(); });
+  doc.querySelector('#menu-select-all-layers').addEventListener('click', () => {
+    selectedLayerIds = new Set(layers.map(layer => layer.id));
+    refreshTimeline();
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-copy-layer').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) layerClipboard = cloneLayer(layer);
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-paste-layer').addEventListener('click', () => {
+    if (layerClipboard) addLayerToProject(cloneLayer(layerClipboard, layerClipboard.name));
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-duplicate-layer').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) addLayerToProject(cloneLayer(layer));
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-rename-layer').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) {
+      const name = global.prompt('Nom du calque', layer.name);
+      if (name !== null && name.trim()) { layer.name = name.trim(); refreshTimeline(); scheduleProjectSave(); }
+    }
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-lock-layer').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) {
+      layer.locked = !layer.locked;
+      if (layer.locked && activeLayerId === layer.id) {
+        const editable = layers.find(item => !item.locked);
+        if (editable) activeLayerId = editable.id;
+      }
+      loadDraft();
+      paintFrame(activeFrame);
+      refreshTimeline();
+      scheduleProjectSave();
+    }
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-layer-properties').addEventListener('click', () => {
+    hideActionMenu();
+    openLayerProperties();
+  });
+  doc.querySelector('#menu-rasterize-layer').addEventListener('click', () => {
+    const layer = selectedLayer();
+    if (layer) {
+      saveActiveFrame();
+      const bakedCanvas = doc.createElement('canvas');
+      bakedCanvas.width = frameWidth;
+      bakedCanvas.height = frameHeight;
+      const bakedContext = bakedCanvas.getContext('2d');
+      layer.frames = Array.from({ length: frameCount }, (_, index) => {
+        bakedContext.clearRect(0, 0, frameWidth, frameHeight);
+        putLayer(bakedContext, displayedLayerFrame(layer, index), 1, motionPose(layer, index), layer);
+        return bakedContext.getImageData(0, 0, frameWidth, frameHeight);
+      });
+      layer.opacity = 1;
+      layer.blendMode = 'source-over';
+      layer.motion = Array.from({ length: frameCount }, identityPose);
+      layer.keyframes = layer.frames.map(hasPixels);
+      layer.type = 'pixel';
+      loadDraft();
+      paintFrame(activeFrame);
+      refreshTimeline();
+      scheduleProjectSave();
+    }
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-add-drawing').addEventListener('click', () => { hideActionMenu(); insertFrame('drawing'); });
+  doc.querySelector('#menu-split-drawing').addEventListener('click', () => {
+    const layer = activeLayer();
+    if (!layer || layer.locked) { hideActionMenu(); return; }
+    saveActiveFrame();
+    const newLayer = makeLayer(`${layer.name} — image ${activeFrame + 1}`);
+    newLayer.frames[activeFrame] = cloneImageData(layer.frames[activeFrame]);
+    newLayer.keyframes[activeFrame] = layer.keyframes[activeFrame];
+    newLayer.motion[activeFrame] = normalizePose(layer.motion[activeFrame]);
+    layer.frames[activeFrame] = null;
+    layer.keyframes[activeFrame] = false;
+    layer.motion[activeFrame] = identityPose();
+    if (activeLayerId === layer.id) {
+      draftContext.clearRect(0, 0, frameWidth, frameHeight);
+      layer.frames[activeFrame] = null;
+    }
+    addLayerToProject(newLayer);
+    hideActionMenu();
+  });
+  doc.querySelector('#menu-create-symbol').addEventListener('click', () => { hideActionMenu(); createSymbolFromLayer(); });
+  doc.querySelector('#menu-add-marker').addEventListener('click', () => { hideActionMenu(); addMarker(); });
+  doc.querySelector('#menu-delete-selection').addEventListener('click', () => {
+    if (selectionRect && !activeLayer()?.locked) {
+      rememberForUndo();
+      draftContext.clearRect(selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height);
+      selectionRect = null;
+      saveActiveFrame();
+      markActiveKeyframe();
+      paintFrame(activeFrame);
+      refreshTimeline();
+      scheduleProjectSave();
+    } else removeSelectedLayers();
+    hideActionMenu();
   });
   async function exportVideo() {
     const status = doc.querySelector('#animation-status');
