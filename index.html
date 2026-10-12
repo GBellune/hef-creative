@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="creator-tools.css?v=20261012">
+  <link rel="stylesheet" href="creator-tools.css?v=20261012-2">
   <style>
     :root{color-scheme:light;--ink:#18352a;--muted:#738078;--paper:#f5f7f2;--line:#e4e9e1;--green:#c8ee76;--coral:#ff795e;--blue:#8bc9e8;font-family:'DM Sans',sans-serif;font-synthesis:none;text-rendering:optimizeLegibility}
     *{box-sizing:border-box}body{min-width:320px;min-height:100vh;margin:0;color:var(--ink);background:var(--paper)}button,input,select,textarea{font:inherit;color:inherit}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
@@ -96,6 +96,7 @@
     form.onsubmit=e=>{e.preventDefault();if(!form.reportValidity())return;const id=document.querySelector('#project-id').value,old=projects.find(p=>String(p.id)===id),p=normalize({id:old?.id??(crypto.randomUUID?crypto.randomUUID():`project-${Date.now()}`),titre:document.querySelector('#title').value.trim(),description:document.querySelector('#description').value.trim(),category:document.querySelector('#category').value,status:document.querySelector('#status').value,client:document.querySelector('#client').value.trim()||'Projet indépendant',cover:old?.cover??covers[projects.length%covers.length],updatedAt:new Date().toISOString().slice(0,10)},projects.length);projects=old?projects.map(item=>item.id===old.id?p:item):[p,...projects];save();dialog.close();render()};
     document.querySelector('#today').textContent=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date());render();
   </script>
-  <script src="creator-tools.js"></script>
+  <script src="creator-tools.js?v=20261012-2"></script>
 </body>
 </html>
+
