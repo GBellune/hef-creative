@@ -396,3 +396,295 @@ aside #creative-tools-nav > button[aria-current="page"] > span {
   accent-color: #8ab1a8;
 }
 .animation-open .layer-label.is-selected{outline:1px solid #648f94;outline-offset:-1px;background:#292c32}.animation-open .ruler-tick.has-marker{border-bottom:2px solid #dda94c;color:#ffdc86}.animation-open .layer-visibility{color:#aaa}.animation-open .desk-properties-dialog,.animation-open .desk-markers-dialog,.animation-open .desk-symbols-dialog{width:min(390px,calc(100% - 28px));max-height:min(80vh,620px);padding:16px;border:1px solid #4a4a52;border-radius:9px;color:#eee;background:#24252a;box-shadow:0 16px 60px #0009}.animation-open .desk-properties-dialog::backdrop,.animation-open .desk-markers-dialog::backdrop,.animation-open .desk-symbols-dialog::backdrop{background:#0009;backdrop-filter:blur(3px)}.animation-open .desk-properties-dialog form,.animation-open .desk-markers-dialog form,.animation-open .desk-symbols-dialog form{display:grid;gap:12px}.animation-open .desk-properties-dialog header,.animation-open .desk-markers-dialog header,.animation-open .desk-symbols-dialog header{display:flex;align-items:center;justify-content:space-between;gap:10px}.animation-open .desk-properties-dialog h2,.animation-open .desk-markers-dialog h2,.animation-open .desk-symbols-dialog h2{margin:0;font-size:16px}.animation-open .desk-properties-dialog label,.animation-open .desk-markers-dialog label{display:grid;gap:5px;color:#c9c8ce;font-size:12px}.animation-open .desk-properties-dialog input:not([type=checkbox]),.animation-open .desk-properties-dialog select,.animation-open .desk-markers-dialog input{width:100%;min-height:30px;padding:5px 8px;border:1px solid #484950;border-radius:5px;color:#eee;background:#303138}.animation-open .desk-properties-dialog .property-check{display:flex;align-items:center;gap:7px}.animation-open .desk-property-save,.animation-open .marker-dialog-actions button,.animation-open .symbol-row button,.animation-open .marker-row button{min-height:29px;padding:4px 9px;border:1px solid #505159;border-radius:5px;color:#eee;background:#32343b;cursor:pointer;font-size:11px}.animation-open .marker-dialog-actions,.animation-open .marker-row,.animation-open .symbol-row{display:flex;align-items:center;justify-content:space-between;gap:8px}.animation-open #marker-list,.animation-open #symbol-list{display:grid;max-height:42vh;gap:7px;overflow:auto}.animation-open .desk-markers-dialog header>button,.animation-open .desk-symbols-dialog header>button,.animation-open .desk-properties-dialog header>button{border:0;color:#eee;background:transparent;cursor:pointer;font-size:20px}.animation-open .desk-action-menu{z-index:5;max-height:70vh;overflow:auto}.animation-open .desk-action-menu hr{border-color:#45464e}
+.animation-open .magnetic-mode-button{padding:4px 8px;border:1px solid #494a52;border-radius:5px;color:#bbb9c1;background:#28292e;cursor:pointer;font-size:10px;white-space:nowrap}.animation-open .magnetic-mode-button.is-active{border-color:#8db4a9;color:#d9f08c;background:#303b37}.animation-open .timeline-cell[draggable=true]{cursor:grab}.animation-open .timeline-cell[draggable=true]:active{cursor:grabbing}.animation-open .layer-label[draggable=true] .layer-name{cursor:grab}.animation-open .layer-label[draggable=true]:active{cursor:grabbing}
+.animation-open .desk-action-menu.is-context-menu{position:fixed;z-index:1000;display:grid;width:220px;max-height:min(80vh,520px);overflow:auto;padding:5px;border:1px solid #555760;border-radius:7px;background:#25262b;box-shadow:0 8px 28px #000a}.animation-open .desk-action-menu.is-context-menu[hidden]{display:none}.animation-open .desk-action-menu.is-context-menu button{min-height:30px;padding:6px 9px;border:0;border-radius:4px;color:#e3e2e7;background:transparent;text-align:left;font-size:11px}.animation-open .desk-action-menu.is-context-menu button:hover{background:#3b3d45}.animation-open .desk-action-menu.is-context-menu button[hidden]{display:none}.animation-open .desk-action-menu.is-context-menu hr{width:100%;margin:3px 0;border:0;border-top:1px solid #494a52}
+
+#addons-view {
+  max-width: none;
+  min-height: calc(100vh - 72px);
+  padding: clamp(20px, 4vw, 42px);
+  border-radius: 9px;
+  color: #f4ecdf;
+  background: linear-gradient(145deg, #2a1d14, #1c130e 70%);
+}
+
+.addon-manager-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #655345;
+}
+
+.addon-manager-header h1 {
+  margin: 0;
+  color: #f6eee3;
+  font: 700 clamp(21px, 3vw, 30px)/1.1 'Space Grotesk', sans-serif;
+  text-transform: uppercase;
+}
+
+.addon-manager-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.addon-manager-tabs button {
+  min-width: 112px;
+  min-height: 40px;
+  padding: 0 15px;
+  border: 1px solid #786657;
+  color: #eee1d1;
+  background: #241912;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.addon-manager-tabs button:hover,
+.addon-manager-tabs button[aria-selected="true"] {
+  border-color: #e1a96b;
+  color: #fff5e8;
+  background: #61432c;
+}
+
+.addon-manager-panel {
+  min-height: 62vh;
+  padding-top: 22px;
+}
+
+.addon-manager-panel[hidden],
+#addon-creator-catalog[hidden],
+#addon-creator-form[hidden] {
+  display: none !important;
+}
+
+.addon-catalog-toolbar {
+  display: flex;
+  width: min(100%, 380px);
+  min-height: 42px;
+  align-items: center;
+  gap: 9px;
+  margin: 0 auto;
+  padding: 0 10px;
+  border: 1px solid #796858;
+  background: #281c14;
+}
+
+.addon-catalog-toolbar label {
+  color: #cbbba8;
+  font-size: 11px;
+}
+
+.addon-catalog-toolbar select {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  color: #f4ecdf;
+  background: transparent;
+  cursor: pointer;
+  text-align: center;
+  font-size: 13px;
+}
+
+.addon-catalog-toolbar option {
+  color: #f4ecdf;
+  background: #281c14;
+}
+
+.addon-sort-button {
+  width: 32px;
+  height: 30px;
+  border: 0;
+  color: #e5b46f;
+  background: transparent;
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.addon-catalog-grid {
+  display: grid;
+  min-height: 54vh;
+  align-content: center;
+  justify-items: center;
+  padding: 25px 0;
+}
+
+.addon-type-picker {
+  max-width: 960px;
+  margin: 0 auto 30px;
+}
+
+.addon-type-picker h2 {
+  margin: 0 0 17px;
+  color: #f4ecdf;
+  font: 600 21px 'Space Grotesk', sans-serif;
+}
+
+.addon-type-search {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 0 12px;
+  border: 1px solid #796858;
+  background: #281c14;
+}
+
+.addon-type-search span {
+  color: #ddb171;
+  font-size: 20px;
+}
+
+.addon-type-search input {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  outline: 0;
+  color: #f4ecdf;
+  background: transparent;
+}
+
+.addon-type-search input::placeholder {
+  color: #b5a694;
+}
+
+.addon-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.addon-type-grid button {
+  display: grid;
+  min-height: 126px;
+  align-content: center;
+  justify-items: center;
+  gap: 11px;
+  padding: 12px;
+  border: 1px solid #796858;
+  color: #f0e5d7;
+  background: #281c14;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.addon-type-grid button:hover,
+.addon-type-grid button:focus-visible {
+  border-color: #efb878;
+  background: #3b291a;
+}
+
+.addon-type-grid button[hidden] {
+  display: none;
+}
+
+.addon-type-grid button > span {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  border: 1px solid #60462f;
+  color: #f1b675;
+  background: #3b291a;
+  font-size: 30px;
+}
+
+.addon-type-empty {
+  padding: 20px;
+  color: #cbbba8;
+  text-align: center;
+}
+
+.addon-new-card {
+  display: grid;
+  width: min(250px, 100%);
+  aspect-ratio: 1 / 1;
+  align-content: center;
+  justify-items: center;
+  gap: 18px;
+  padding: 15px;
+  border: 2px solid #9a8876;
+  color: #f1dfca;
+  background: #261a12;
+  cursor: pointer;
+}
+
+.addon-new-card:hover,
+.addon-new-card:focus-visible {
+  border-color: #efb878;
+  background: #302116;
+}
+
+.addon-new-label {
+  font: 700 14px 'Space Grotesk', sans-serif;
+  text-transform: uppercase;
+}
+
+.addon-new-icon {
+  display: grid;
+  width: 78%;
+  aspect-ratio: 1 / 1;
+  place-items: center;
+  border: 1px solid #60462f;
+  color: #f1b675;
+  background: #3b291a;
+  font: 300 clamp(50px, 8vw, 78px)/1 'DM Sans', sans-serif;
+}
+
+#addon-creator-form .eyebrow,
+#addon-creator-form .addon-form-title,
+#addon-creator-form .intro,
+#addon-creator-form .addon-fields .field label:not(.upload-texture) {
+  color: #f4ecdf;
+}
+
+.addon-form-title {
+  margin: 0 0 7px;
+  font: 600 25px 'Space Grotesk', sans-serif;
+}
+
+.addon-back-button {
+  min-height: 34px;
+  margin-bottom: 22px;
+  padding: 0 11px;
+  border: 1px solid #796858;
+  border-radius: 5px;
+  color: #eee1d1;
+  background: #281c14;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+@media (max-width: 640px) {
+  #addons-view {
+    padding: 18px 14px;
+  }
+
+  .addon-manager-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .addon-manager-tabs {
+    width: 100%;
+  }
+
+  .addon-manager-tabs button {
+    min-width: 0;
+    flex: 1;
+    padding: 0 8px;
+    font-size: 10px;
+  }
+
+  .addon-new-card {
+    width: min(220px, 100%);
+  }
+}
